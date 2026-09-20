@@ -7,7 +7,7 @@ Environment:
 - AVD: `jev_android_api35`
 - device: `emulator-5554`
 - system image: Android 35 Google APIs ARM64
-- assistant package: `jev-android-assistant 0.1.0`
+- assistant package: `ultrafast-android-assistant 0.1.0`
 
 Verified on a real emulator:
 

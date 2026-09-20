@@ -5,14 +5,14 @@ from __future__ import annotations
 from dataclasses import asdict
 
 from .android import AdbDevice, Snapshot, StaleScreen
-from .policy import Decision, JevPolicy
+from .policy import Decision, UltrafastPolicy
 
 
 class AndroidAssistant:
     def __init__(
         self,
         device: AdbDevice,
-        policy: JevPolicy,
+        policy: UltrafastPolicy,
         *,
         min_probability: float = 0.55,
         completion_threshold: float = 0.85,

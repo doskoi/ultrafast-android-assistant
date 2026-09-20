@@ -1,4 +1,4 @@
-# Jev Android Assistant
+# Ultrafast Android Assistant
 
 这是一个可复用的 Android UI 导航助手。它通过 UIAutomator 读取当前页面，把可见、可操作的控件
 转换成有编号的有限动作空间，再让本地 `laya-mlx` 判断下一步操作和对应目标。
@@ -33,7 +33,7 @@ ID，并在第一次加载时下载权重。上述 `uv pip install` 只安装本
 使用同一环境运行：
 
 ```bash
-uv run --no-sync jev-android-assistant --serial emulator-5554 --package com.example.reader \
+uv run --no-sync ultrafast-android-assistant --serial emulator-5554 --package com.example.reader \
   suggest "打开今日榜单，看到榜单标题后停止"
 ```
 
@@ -45,7 +45,7 @@ Android package；助手发现前台应用不是这个 package 时会立即停�
 先读取当前动作空间，不调用模型：
 
 ```bash
-uv run --no-sync jev-android-assistant \
+uv run --no-sync ultrafast-android-assistant \
   --serial emulator-5554 \
   --package com.example.reader \
   inspect
@@ -54,7 +54,7 @@ uv run --no-sync jev-android-assistant \
 让本地 Laya 建议一步但不执行：
 
 ```bash
-uv run --no-sync jev-android-assistant \
+uv run --no-sync ultrafast-android-assistant \
   --serial emulator-5554 \
   --package com.example.reader \
   suggest '从当前页面打开今日榜单，看到榜单标题后停止'
@@ -63,7 +63,7 @@ uv run --no-sync jev-android-assistant \
 执行有步数上限的导航：
 
 ```bash
-uv run --no-sync jev-android-assistant \
+uv run --no-sync ultrafast-android-assistant \
   --serial emulator-5554 \
   --package com.example.reader \
   run '从当前页面打开今日榜单，看到榜单标题后停止' \
@@ -74,7 +74,7 @@ Kaipl 可以直接作为一个调用方，不需要把助手代码放进 Kaipl �
 其它版本应先用 ADB 确认 package：
 
 ```bash
-uv run --no-sync jev-android-assistant \
+uv run --no-sync ultrafast-android-assistant \
   --serial emulator-5554 \
   --package com.yzj.kaipanh \
   suggest '从当前首页进入市场情绪页面，看到页面标题后停止'

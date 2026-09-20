@@ -1,16 +1,19 @@
 [project]
-name = "jev-android-assistant"
+name = "ultrafast-android-assistant"
 version = "0.1.0"
-description = "A Jev-guided, guarded Android UI assistant built on UIAutomator."
+description = "An Ultrafast-guided, guarded Android UI assistant built on UIAutomator."
 requires-python = ">=3.12"
 dependencies = []
 
 [project.scripts]
-jev-android-assistant = "jev_android_assistant.cli:main"
+ultrafast-android-assistant = "jev_android_assistant.cli:main"
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/jev_android_assistant"]
 
 [dependency-groups]
 dev = ["pytest>=8.4,<9", "ruff>=0.14,<1"]

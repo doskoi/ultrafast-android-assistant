@@ -8,7 +8,7 @@ import sys
 
 from .agent import AndroidAssistant
 from .android import DEFAULT_ADB, AdbDevice
-from .policy import JevPolicy
+from .policy import UltrafastPolicy
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -34,7 +34,7 @@ def main() -> None:
     device = AdbDevice(adb=args.adb, serial=args.serial, package=args.package)
     assistant = AndroidAssistant(
         device,
-        JevPolicy(model=args.model),
+        UltrafastPolicy(model=args.model),
         min_probability=args.min_probability,
         completion_threshold=args.completion_threshold,
     )

@@ -7,7 +7,7 @@ import pytest
 
 from jev_android_assistant.agent import AndroidAssistant
 from jev_android_assistant.android import Bounds, Element, Snapshot, StaleScreen
-from jev_android_assistant.policy import Decision, JevPolicy
+from jev_android_assistant.policy import Decision, UltrafastPolicy
 
 APP_PACKAGE = "com.example.reader"
 
@@ -71,17 +71,17 @@ def test_one_request_selects_operation_and_only_validates_its_target() -> None:
                 "scroll_up_target": object(),
                 "goal_complete": SimpleNamespace(noul=0.1),
             },
-            model="jev-test",
+            model="ultrafast-test",
         )
     )
 
-    decision = JevPolicy(client=client).decide(snapshot(), "打开市场情绪", [])
+    decision = UltrafastPolicy(client=client).decide(snapshot(), "打开市场情绪", [])
 
     assert len(client.calls) == 1
     assert decision.operation == "CLICK"
     assert decision.target == "1"
     assert decision.execution_probability == 0.8
-    assert decision.model == "jev-test"
+    assert decision.model == "ultrafast-test"
     assert set(client.calls[0]["questions"]) == {
         "operation",
         "goal_complete",
@@ -103,7 +103,7 @@ def test_invalid_probability_shape_blocks_decision() -> None:
     )
 
     with pytest.raises(ValueError, match="Invalid typed-decision choice"):
-        JevPolicy(client=client).decide(snapshot(), "打开市场情绪", [])
+        UltrafastPolicy(client=client).decide(snapshot(), "打开市场情绪", [])
 
 
 @dataclass
@@ -146,7 +146,7 @@ def decision(
         target_confidence=0.9 if target is not None else None,
         completion_probability=completion_probability,
         latency_ms=5,
-        model="jev-test",
+        model="ultrafast-test",
     )
 
 

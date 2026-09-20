@@ -76,7 +76,7 @@ def _targets(elements: tuple[Element, ...], operation: str) -> dict[str, Element
     return {element.index: element for element in elements if operation in element.operations}
 
 
-class JevPolicy:
+class UltrafastPolicy:
     def __init__(self, client: SystemOneClient | None = None, *, model: str | None = None):
         self.client = client
         self.model = model or os.environ.get("LAYA_MLX_MODEL", "aac6fef/laya-multilingual-mlx")
@@ -157,3 +157,7 @@ class JevPolicy:
             latency_ms=latency_ms,
             model=getattr(response, "model", self.model),
         )
+
+
+# Compatibility export for callers that used the pre-Ultrafast package API.
+JevPolicy = UltrafastPolicy

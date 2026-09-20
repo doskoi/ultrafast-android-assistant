@@ -12,7 +12,7 @@ import xml.etree.ElementTree as ET
 from dataclasses import asdict, dataclass
 
 DEFAULT_ADB = os.environ.get("ANDROID_ADB", "adb")
-SNAPSHOT_MARKER = "__JEV_ANDROID_FOCUS__"
+SNAPSHOT_MARKER = "__ULTRAFAST_ANDROID_FOCUS__"
 BOUNDS_RE = re.compile(r"\[(\d+),(\d+)]\[(\d+),(\d+)]")
 FOCUS_RE = re.compile(r"(?:mCurrentFocus|mFocusedApp).*?\s([\w.]+/[\w.$]+)")
 PACKAGE_RE = re.compile(r"(?:[A-Za-z_]\w*\.)+[A-Za-z_]\w*")
@@ -109,7 +109,7 @@ class UnsafeTarget(ValueError):
 
 
 class StaleScreen(ValueError):
-    """The UI changed after Jev made its decision."""
+    """The UI changed after Ultrafast made its decision."""
 
 
 class ReadOnlySafetyPolicy:
@@ -292,9 +292,9 @@ class AdbDevice:
 
     def observe(self) -> Snapshot:
         script = (
-            "uiautomator dump /sdcard/jev-android-assistant-window.xml >/dev/null 2>&1 && "
-            "cat /sdcard/jev-android-assistant-window.xml && "
-            "rm -f /sdcard/jev-android-assistant-window.xml && "
+            "uiautomator dump /sdcard/ultrafast-android-assistant-window.xml >/dev/null 2>&1 && "
+            "cat /sdcard/ultrafast-android-assistant-window.xml && "
+            "rm -f /sdcard/ultrafast-android-assistant-window.xml && "
             f"printf '\\n{SNAPSHOT_MARKER}\\n' && "
             "dumpsys window | grep -E 'mCurrentFocus|mFocusedApp' | head -2"
         )
