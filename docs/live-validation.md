@@ -29,3 +29,26 @@ The device observation, freshness guard, target mapping, probability gate, ADB c
 therefore ran against a real emulator with the historical model decisions. The first click decision in the
 bounded run took about 3.5 seconds; the completion request took about 29.5 seconds. Those figures do not prove
 the latency of local Laya and should not be reused for the new runtime.
+
+## 2026-09-21 · Local Laya end-to-end validation
+
+Environment:
+
+- AVD: `jev_android_api35`
+- device: `emulator-5554`
+- package under test: `com.android.settings`
+- model: local `aac6fef/laya-multilingual-mlx` through `/Users/sj/projects/laya-mlx`
+
+Verified:
+
+1. `inspect` read the live Android Settings UIAutomator tree and exposed the visible `Battery` item.
+2. A real local Laya `suggest` request ran against that live tree. For the goal “open Battery”, Laya selected
+   `BACK` below the default `0.55` execution threshold; the assistant returned `needs_review` and sent no input.
+3. A bounded read-only run with the explicit goal “press Android Back and stop” selected `BACK` with operation
+   probability `0.5514` and completion probability `0.9583`.
+4. The normal assistant path re-observed the screen, passed the probability gate, sent the ADB Back action, and
+   returned `executed`. A subsequent `dumpsys window` showed focus returned to the underlying Kaipl activity.
+
+This validates the local model loading, live UIAutomator observation, probability gate, freshness check and real
+ADB execution path. It does not claim that Laya will always choose the correct target; the low-confidence Battery
+case was correctly blocked rather than executed.
