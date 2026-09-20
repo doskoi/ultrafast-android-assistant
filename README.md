@@ -65,7 +65,8 @@ uv run jev-android-assistant \
   --max-steps 12
 ```
 
-Kaipl 可以直接作为一个调用方，不需要把助手代码放进 Kaipl 仓库：
+Kaipl 可以直接作为一个调用方，不需要把助手代码放进 Kaipl 仓库。下面是 6.0.10 的实测 package；
+其它版本应先用 ADB 确认 package：
 
 ```bash
 uv run jev-android-assistant \
