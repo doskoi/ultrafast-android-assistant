@@ -23,6 +23,15 @@ uv sync
 export TYPESAFE_API_KEY='<只放在本机环境变量>'
 ```
 
+如果 key 在交互式 zsh 中只是 shell 变量、尚未 export 给子进程，可以这样运行，不需要读取或
+打印 key：
+
+```bash
+/bin/zsh -ic 'export TYPESAFE_API_KEY; cd /Users/sj/projects/jev-android-assistant && \
+  uv run jev-android-assistant --serial emulator-5554 --package com.example.reader \
+  suggest "打开今日榜单，看到榜单标题后停止"'
+```
+
 ADB 默认从 `PATH` 查找，也可以设置 `ANDROID_ADB` 或传 `--adb`。每次运行必须显式提供允许操作的
 Android package；助手发现前台应用不是这个 package 时会立即停止。
 
