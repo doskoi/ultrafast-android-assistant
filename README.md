@@ -3,8 +3,7 @@
 这是一个可复用的 Android UI 导航助手。它通过 UIAutomator 读取当前页面，把可见、可操作的控件
 转换成有编号的有限动作空间，再让本地 `laya-mlx` 判断下一步操作和对应目标。
 
-设计参考 `browser-use/jev-ultrafast` 的
-[`1231850a`](https://github.com/browser-use/jev-ultrafast/tree/1231850a0bf1a0c0341fe408ef1668dbbfdfac46)：
+设计采用“当前页面动作空间 + 一次 typed decision + 执行前 freshness 校验”的模式：
 
 - 每一步都从当前页面重新生成动作空间；
 - 一次 System One 请求同时生成操作、各操作的候选目标和完成判断；
@@ -79,6 +78,40 @@ uv run --no-sync ultrafast-android-assistant \
   --package com.yzj.kaipanh \
   suggest '从当前首页进入市场情绪页面，看到页面标题后停止'
 ```
+
+## 推荐的操作策略：确定性优先，Ultrafast 兜底
+
+Ultrafast 是导航判断器，不是所有 Android 操作的必经步骤。为了提高批量调查和版本对比的效率，按下面的
+优先级选择路径：
+
+1. **静态 APK 对比不启动模拟器，也不调用 Ultrafast。** 直接比较 JADX/DEX、资源、Manifest、字符串、
+   网络入口和已经记录的 API 证据。
+2. **已知页面和稳定控件不调用 Ultrafast。** 由本地代码读取 UIAutomator 树，用稳定的
+   `resource-id`、文本、content description 或控件角色匹配目标，然后通过经过校验的 ADB 执行点击、
+   滚动、返回和等待。每次输入前仍须重新观察页面并检查 fingerprint，不能复用过期坐标或旧节点。
+3. **只有页面结构变化、入口不确定或多个控件语义相近时调用 Ultrafast。** Ultrafast 只返回当前观察结果中的
+   操作和目标编号；本地代码从同一份刚观察的 UI 树取得 bounds，再交给 ADB 执行。模型不得生成坐标、
+   selector、shell 命令或输入内容。
+4. **操作完成后优先做本地验证。** 先用 UIAutomator、页面 fingerprint、前台 Activity、日志或网络
+   观察确认状态变化；不要为了验证每一步再次调用模型。
+
+典型的高效链路是：
+
+```text
+静态 APK 扫描
+  -> 本地规则匹配已知控件
+  -> ADB 执行并等待页面变化
+  -> 本地验证
+  -> 只有匹配失败或语义不确定时，调用一次 Ultrafast
+```
+
+对新页面，`inspect` 用于读取动作空间；`suggest` 适合在第一次确认路径时只取一步建议。确认轨迹
+是只读导航后，直接使用有步数上限的 `run`，不要对同一步骤先执行一次 `suggest`，再让 `run` 重复
+判断，否则会产生重复模型请求。代码调用方也可以直接使用 `AndroidAssistant.step(..., execute=True)`，
+由一次 Ultrafast 判断接一次本地 ADB 执行。
+
+因此，功能 Gap 扫描应先按“静态证据 -> 已知流程的确定性回归 -> 仅对未知分支使用 Ultrafast”的顺序进行。
+Ultrafast 的点击日志只能证明导航到了某个页面，不能单独证明 API 请求、字段含义、分页或 Gateway 合同。
 
 ## 执行边界
 
