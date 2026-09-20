@@ -12,7 +12,7 @@ from .policy import JevPolicy
 
 
 def _parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Jev-guided, read-only Android UI navigation")
+    parser = argparse.ArgumentParser(description="Local Laya-guided, read-only Android UI navigation")
     parser.add_argument("--adb", default=DEFAULT_ADB)
     parser.add_argument("--serial")
     parser.add_argument("--package", required=True, help="Android application package allowed for this run")
@@ -21,7 +21,7 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--completion-threshold", type=float, default=0.85)
     subparsers = parser.add_subparsers(dest="command", required=True)
     subparsers.add_parser("inspect", help="print the redacted, indexed action space without a model call")
-    suggest = subparsers.add_parser("suggest", help="ask Jev for one action without executing it")
+    suggest = subparsers.add_parser("suggest", help="ask local Laya for one action without executing it")
     suggest.add_argument("goal")
     run = subparsers.add_parser("run", help="execute a bounded read-only navigation loop")
     run.add_argument("goal")

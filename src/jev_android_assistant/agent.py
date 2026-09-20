@@ -48,11 +48,11 @@ class AndroidAssistant:
             result["reason"] = (
                 "goal visibly complete"
                 if result["status"] == "done"
-                else "Jev chose DONE without enough operation and completion probability"
+                else "Local Laya chose DONE without enough operation and completion probability"
             )
             return result
         if decision.operation == "BLOCKED":
-            result.update(status="blocked", reason="Jev found no supported read-only action")
+            result.update(status="blocked", reason="Local Laya found no supported read-only action")
             return result
         if not execute:
             return result

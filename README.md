@@ -1,7 +1,7 @@
 # Jev Android Assistant
 
 这是一个可复用的 Android UI 导航助手。它通过 UIAutomator 读取当前页面，把可见、可操作的控件
-转换成有编号的有限动作空间，再让 TypeSafe Jev 判断下一步操作和对应目标。
+转换成有编号的有限动作空间，再让本地 `laya-mlx` 判断下一步操作和对应目标。
 
 设计参考 `browser-use/jev-ultrafast` 的
 [`1231850a`](https://github.com/browser-use/jev-ultrafast/tree/1231850a0bf1a0c0341fe408ef1668dbbfdfac46)：
@@ -16,20 +16,25 @@
 
 ## 安装
 
-需要 Python 3.12、`uv`、ADB 和 TypeSafe API key：
+需要 Python 3.12、`uv`、ADB，以及本机 checkout 的
+[`laya-mlx`](https://github.com/mizorewww/laya-mlx)：
 
 ```bash
+export LAYA_MLX_PATH=/Users/sj/projects/laya-mlx
+export LAYA_MLX_MODEL=/absolute/path/to/laya-checkpoint
+
 uv sync
-export TYPESAFE_API_KEY='<只放在本机环境变量>'
+uv pip install --python .venv/bin/python -e "$LAYA_MLX_PATH"
 ```
 
-如果 key 在交互式 zsh 中只是 shell 变量、尚未 export 给子进程，可以这样运行，不需要读取或
-打印 key：
+`LAYA_MLX_MODEL` 应指向本地 checkpoint 目录；如果暂时不设置，它会使用 `laya-mlx` 的默认模型
+ID，并在第一次加载时下载权重。上述 `uv pip install` 只安装本地库和依赖，不调用远程决策 API。
+
+使用同一环境运行：
 
 ```bash
-/bin/zsh -ic 'export TYPESAFE_API_KEY; cd /Users/sj/projects/jev-android-assistant && \
-  uv run jev-android-assistant --serial emulator-5554 --package com.example.reader \
-  suggest "打开今日榜单，看到榜单标题后停止"'
+uv run --no-sync jev-android-assistant --serial emulator-5554 --package com.example.reader \
+  suggest "打开今日榜单，看到榜单标题后停止"
 ```
 
 ADB 默认从 `PATH` 查找，也可以设置 `ANDROID_ADB` 或传 `--adb`。每次运行必须显式提供允许操作的
@@ -40,16 +45,16 @@ Android package；助手发现前台应用不是这个 package 时会立即停�
 先读取当前动作空间，不调用模型：
 
 ```bash
-uv run jev-android-assistant \
+uv run --no-sync jev-android-assistant \
   --serial emulator-5554 \
   --package com.example.reader \
   inspect
 ```
 
-让 Jev 建议一步但不执行：
+让本地 Laya 建议一步但不执行：
 
 ```bash
-uv run jev-android-assistant \
+uv run --no-sync jev-android-assistant \
   --serial emulator-5554 \
   --package com.example.reader \
   suggest '从当前页面打开今日榜单，看到榜单标题后停止'
@@ -58,7 +63,7 @@ uv run jev-android-assistant \
 执行有步数上限的导航：
 
 ```bash
-uv run jev-android-assistant \
+uv run --no-sync jev-android-assistant \
   --serial emulator-5554 \
   --package com.example.reader \
   run '从当前页面打开今日榜单，看到榜单标题后停止' \
@@ -69,7 +74,7 @@ Kaipl 可以直接作为一个调用方，不需要把助手代码放进 Kaipl �
 其它版本应先用 ADB 确认 package：
 
 ```bash
-uv run jev-android-assistant \
+uv run --no-sync jev-android-assistant \
   --serial emulator-5554 \
   --package com.yzj.kaipanh \
   suggest '从当前首页进入市场情绪页面，看到页面标题后停止'
@@ -90,8 +95,8 @@ uv run jev-android-assistant \
 ## 验证
 
 ```bash
-uv run ruff check .
-uv run pytest -q
+uv run --no-sync ruff check .
+uv run --no-sync pytest -q
 uv build
 ```
 

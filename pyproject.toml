@@ -3,7 +3,7 @@ name = "jev-android-assistant"
 version = "0.1.0"
 description = "A Jev-guided, guarded Android UI assistant built on UIAutomator."
 requires-python = ">=3.12"
-dependencies = ["typesafe-sdk==0.7.0"]
+dependencies = []
 
 [project.scripts]
 jev-android-assistant = "jev_android_assistant.cli:main"

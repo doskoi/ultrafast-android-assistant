@@ -19,14 +19,13 @@ Verified on a real emulator:
 5. A deterministic test policy selected the observed `Battery` element. The normal assistant execution path
    re-observed the full page, matched the fingerprint, mapped the selected index to its local bounds, tapped it,
    and reached `com.android.settings/.SubSettings` with visible `Battery` content.
-6. After exporting the existing interactive-zsh `TYPESAFE_API_KEY` into the child process, a live
-   `jev-1.13.0` request selected `CLICK` target `9` (`Battery`) with operation and target probability `1.0`.
-7. The bounded `run` executed that live Jev decision and the next live request returned `DONE` with operation
-   probability `1.0` and completion probability `0.93` on the Battery page.
-8. On Kaipl's first-run agreement screen, the code exposed no consent action and live Jev selected `BLOCKED`
-   with probability `0.87`; no input was sent.
+6. The historical validation below predates local Laya and is not the current runtime path.
+7. A current local Laya validation must load a local checkpoint, record the selected operation/target and
+   probabilities, then verify the same bounded run on the emulator.
+8. On Kaipl's first-run agreement screen, the code exposed no consent action and the historical model selected
+   `BLOCKED` with probability `0.87`; no input was sent.
 
 The device observation, freshness guard, target mapping, probability gate, ADB click, and post-click navigation
-therefore ran against a real emulator with live Jev decisions. The first click decision in the bounded run took
-about 3.5 seconds; the completion request took about 29.5 seconds, so target-selection quality is verified but
-latency still needs measurement across representative app traces.
+therefore ran against a real emulator with the historical model decisions. The first click decision in the
+bounded run took about 3.5 seconds; the completion request took about 29.5 seconds. Those figures do not prove
+the latency of local Laya and should not be reused for the new runtime.

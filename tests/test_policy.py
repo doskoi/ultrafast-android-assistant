@@ -102,7 +102,7 @@ def test_invalid_probability_shape_blocks_decision() -> None:
         )
     )
 
-    with pytest.raises(ValueError, match="Invalid TypeSafe choice"):
+    with pytest.raises(ValueError, match="Invalid typed-decision choice"):
         JevPolicy(client=client).decide(snapshot(), "打开市场情绪", [])
 
 
