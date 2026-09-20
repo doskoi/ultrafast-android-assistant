@@ -1,0 +1,25 @@
+[project]
+name = "jev-android-assistant"
+version = "0.1.0"
+description = "A Jev-guided, guarded Android UI assistant built on UIAutomator."
+requires-python = ">=3.12"
+dependencies = ["typesafe-sdk==0.7.0"]
+
+[project.scripts]
+jev-android-assistant = "jev_android_assistant.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = ["pytest>=8.4,<9", "ruff>=0.14,<1"]
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
