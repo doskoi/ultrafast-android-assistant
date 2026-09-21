@@ -1,5 +1,31 @@
 # Live validation
 
+## Reproducing a local-model check
+
+Install the local runtime into this repository's environment before calling `suggest` or `run`:
+
+```bash
+export LAYA_MLX_PATH=/Users/sj/projects/laya-mlx
+export LAYA_MLX_MODEL=/absolute/path/to/laya-checkpoint
+uv sync
+uv pip install --python .venv/bin/python -e "$LAYA_MLX_PATH"
+```
+
+`LAYA_MLX_MODEL` may also be a model ID, but the first load can download weights. Use a local checkpoint when
+the check must be offline. If ADB is not on `PATH`, pass the verified binary explicitly:
+
+```bash
+uv run --no-sync ultrafast-android-assistant \
+  --adb /Users/sj/Library/Android/sdk/platform-tools/adb \
+  --serial emulator-5554 \
+  --package com.android.settings \
+  inspect
+```
+
+`inspect` only observes; `suggest` only returns a decision; `run --max-steps N` is the bounded execution path.
+Keep the default probability gate. A low-confidence or incorrect model target should return `needs_review` and
+send no input, as shown by the Battery case below.
+
 ## 2026-09-20 · Android 15 emulator
 
 Environment:

@@ -20,14 +20,22 @@
 
 ```bash
 export LAYA_MLX_PATH=/Users/sj/projects/laya-mlx
+# 可填本地 checkpoint 目录；也可填 Hugging Face model ID。
+# 严格离线运行时必须填写已经下载好的本地目录。
 export LAYA_MLX_MODEL=/absolute/path/to/laya-checkpoint
 
 uv sync
 uv pip install --python .venv/bin/python -e "$LAYA_MLX_PATH"
 ```
 
-`LAYA_MLX_MODEL` 应指向本地 checkpoint 目录；如果暂时不设置，它会使用 `laya-mlx` 的默认模型
-ID，并在第一次加载时下载权重。上述 `uv pip install` 只安装本地库和依赖，不调用远程决策 API。
+`LAYA_MLX_PATH` 是本地 checkout 的导入兜底；`uv pip install` 仍然是推荐的安装方式。`LAYA_MLX_MODEL`
+可以是本地 checkpoint 目录或 model ID；如果省略，默认使用 `aac6fef/laya-multilingual-mlx`，首次加载
+可能从 Hugging Face 下载权重。上述安装和决策过程不调用任何远程决策 API；要做到完全离线，先下载
+权重并使用本地目录。
+
+ADB 默认从 `PATH` 查找。本机的 SDK ADB 路径是
+`/Users/sj/Library/Android/sdk/platform-tools/adb`；如果 `adb` 不在 `PATH`，请设置
+`ANDROID_ADB` 或在每条命令中传 `--adb /Users/sj/Library/Android/sdk/platform-tools/adb`。
 
 使用同一环境运行：
 
@@ -36,8 +44,7 @@ uv run --no-sync ultrafast-android-assistant --serial emulator-5554 --package co
   suggest "打开今日榜单，看到榜单标题后停止"
 ```
 
-ADB 默认从 `PATH` 查找，也可以设置 `ANDROID_ADB` 或传 `--adb`。每次运行必须显式提供允许操作的
-Android package；助手发现前台应用不是这个 package 时会立即停止。
+每次运行必须显式提供允许操作的 Android package；助手发现前台应用不是这个 package 时会立即停止。
 
 ## 使用
 
@@ -124,6 +131,10 @@ Ultrafast 的点击日志只能证明导航到了某个页面，不能单独证�
 
 自动执行默认要求操作和目标的最低概率都达到 `0.55`。`DONE` 同时要求操作概率达到该阈值，
 并且完成判断达到 `0.85`。这些值是保守初值，应使用目标应用的真实导航轨迹评估后再调整。
+
+真实使用时不要为了让某个目标“成功”而降低阈值或强制执行低置信度动作。模型选错目标或概率不足时，
+预期结果是 `needs_review`，不发送输入；应改进目标描述、使用确定性 UIAutomator 匹配，或回退到本地
+人工确认。`inspect` 不调用模型，`suggest` 只建议不执行，只有有步数上限的 `run` 才会执行动作。
 
 ## 验证
 
