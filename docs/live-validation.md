@@ -14,6 +14,10 @@ uv pip install --python .venv/bin/python -e "$LAYA_MLX_PATH"
 `LAYA_MLX_MODEL` may also be a model ID, but the first load can download weights. Use a local checkpoint when
 the check must be offline. If ADB is not on `PATH`, pass the verified binary explicitly:
 
+The current router defaults to `laya -> jev`. Set `ULTRAFAST_PRIMARY_PROVIDER` and
+`ULTRAFAST_SECONDARY_PROVIDER` to test the opposite order, or set the secondary provider to `none` for a
+local-only run. Jev requires a separately sourced `TYPESAFE_API_KEY`; do not use it for private UI trees.
+
 ```bash
 uv run --no-sync ultrafast-android-assistant \
   --adb /Users/sj/Library/Android/sdk/platform-tools/adb \

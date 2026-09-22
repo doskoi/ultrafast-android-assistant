@@ -5,14 +5,14 @@ from __future__ import annotations
 from dataclasses import asdict
 
 from .android import AdbDevice, Snapshot, StaleScreen
-from .policy import Decision, UltrafastPolicy
+from .policy import Decision, DecisionPolicy
 
 
 class AndroidAssistant:
     def __init__(
         self,
         device: AdbDevice,
-        policy: UltrafastPolicy,
+        policy: DecisionPolicy,
         *,
         min_probability: float = 0.55,
         completion_threshold: float = 0.85,
@@ -48,11 +48,11 @@ class AndroidAssistant:
             result["reason"] = (
                 "goal visibly complete"
                 if result["status"] == "done"
-                else "Local Laya chose DONE without enough operation and completion probability"
+                else "Configured provider chose DONE without enough operation and completion probability"
             )
             return result
         if decision.operation == "BLOCKED":
-            result.update(status="blocked", reason="Local Laya found no supported read-only action")
+            result.update(status="blocked", reason="Configured provider found no supported read-only action")
             return result
         if not execute:
             return result

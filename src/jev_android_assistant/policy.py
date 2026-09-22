@@ -1,13 +1,13 @@
-"""One speculative local Laya request chooses an operation and its compatible target."""
+"""Guarded Android UI decisions with configurable Laya/Jev failback."""
 
 from __future__ import annotations
 
 import math
 import os
 import time
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
-from typing import Protocol
+from typing import Literal, Protocol
 
 from .android import Element, Snapshot
 from .laya import LayaClient
@@ -24,9 +24,15 @@ TARGET = """假设本问题指定的操作就是下一步，从候选中选择�
 COMPLETE = """当前界面是否已经提供明确、可见的证据，证明用户目标的全部要求均已完成？
 只根据当前界面和最近操作判断；看到入口或链接不等于已经打开目标结果。"""
 
+ProviderName = Literal["laya", "jev"]
+
 
 class SystemOneClient(Protocol):
     def system_one(self, state: object, questions: object, *, model: str | None = None) -> object: ...
+
+
+class DecisionPolicy(Protocol):
+    def decide(self, snapshot: Snapshot, goal: str, history: list[dict[str, object]]) -> "Decision": ...
 
 
 @dataclass(frozen=True)
@@ -40,6 +46,7 @@ class Decision:
     completion_probability: float
     latency_ms: int
     model: str
+    provider: ProviderName | None = None
 
     @property
     def execution_probability(self) -> float:
@@ -49,15 +56,16 @@ class Decision:
         )
 
 
-def _choice(answer: object, expected: set[str]) -> tuple[str, dict[str, float], float]:
-    def field(name: str, default: object = None) -> object:
-        if isinstance(answer, Mapping):
-            return answer.get(name, default)
-        return getattr(answer, name, default)
+def _field(value: object, name: str, default: object = None) -> object:
+    if isinstance(value, Mapping):
+        return value.get(name, default)
+    return getattr(value, name, default)
 
-    choice = field("choice")
-    probabilities = field("probabilities")
-    confidence = field("confidence")
+
+def _choice(answer: object, expected: set[str]) -> tuple[str, dict[str, float], float]:
+    choice = _field(answer, "choice")
+    probabilities = _field(answer, "probabilities")
+    confidence = _field(answer, "confidence")
     probabilities = probabilities if isinstance(probabilities, dict) else {}
     numbers = [*probabilities.values(), confidence]
     valid = (
@@ -76,16 +84,54 @@ def _targets(elements: tuple[Element, ...], operation: str) -> dict[str, Element
     return {element.index: element for element in elements if operation in element.operations}
 
 
-class UltrafastPolicy:
-    def __init__(self, client: SystemOneClient | None = None, *, model: str | None = None):
+class JevClient:
+    """Lazy adapter for the historical remote TypeSafe Jev service."""
+
+    def __init__(self, model: str | None = None):
+        self.model = model or os.environ.get("TYPESAFE_DEFAULT_MODEL", "jev-latest")
+        self._client: object | None = None
+
+    def system_one(self, state: object, questions: object, *, model: str | None = None) -> object:
+        if self._client is None:
+            if not os.environ.get("TYPESAFE_API_KEY"):
+                raise RuntimeError("TypeSafe Jev unavailable: set TYPESAFE_API_KEY before using the Jev provider")
+            try:
+                from typesafe_sdk import TypeSafeClient
+            except ModuleNotFoundError as exc:
+                raise RuntimeError("TypeSafe Jev unavailable: install typesafe-sdk") from exc
+            self._client = TypeSafeClient()
+        return self._client.system_one(state=state, questions=questions, model=model or self.model)  # type: ignore[attr-defined]
+
+    def close(self) -> None:
+        self._client = None
+
+
+class _TypedPolicy:
+    def __init__(
+        self,
+        *,
+        provider: ProviderName,
+        client: SystemOneClient | None,
+        model: str,
+        create_client: Callable[[], SystemOneClient],
+    ):
+        self.provider = provider
         self.client = client
-        self.model = model or os.environ.get("LAYA_MLX_MODEL", "aac6fef/laya-multilingual-mlx")
+        self.model = model
+        self._create_client = create_client
 
     def _client(self) -> SystemOneClient:
         if self.client is not None:
             return self.client
-        self.client = LayaClient(model=self.model)
+        self.client = self._create_client()
         return self.client
+
+    def close(self) -> None:
+        client = self.client
+        self.client = None
+        close = getattr(client, "close", None)
+        if callable(close):
+            close()
 
     def decide(self, snapshot: Snapshot, goal: str, history: list[dict[str, object]]) -> Decision:
         target_groups = {
@@ -131,11 +177,11 @@ class UltrafastPolicy:
             state=snapshot.model_state(history), questions=questions, model=self.model
         )
         latency_ms = round((time.perf_counter() - started) * 1000)
-        answers = getattr(response, "answers", {})
+        answers = _field(response, "answers", {})
         operation, operation_probabilities, operation_confidence = _choice(
-            answers.get("operation"), set(operations)
+            _field(answers, "operation"), set(operations)
         )
-        completion = getattr(answers.get("goal_complete"), "noul", None)
+        completion = _field(_field(answers, "goal_complete"), "noul")
         if type(completion) not in (int, float) or not math.isfinite(completion) or not 0 <= completion <= 1:
             raise ValueError("Invalid typed-decision completion response; no Android action executed")
         target = None
@@ -143,9 +189,10 @@ class UltrafastPolicy:
         target_confidence = None
         if operation in target_groups:
             target, target_probabilities, target_confidence = _choice(
-                answers.get(f"{operation.lower()}_target"), set(target_groups[operation])
+                _field(answers, f"{operation.lower()}_target"), set(target_groups[operation])
             )
             target_probability = target_probabilities[target]
+        response_model = _field(response, "model")
         return Decision(
             operation=operation,
             target=target,
@@ -155,9 +202,167 @@ class UltrafastPolicy:
             target_confidence=target_confidence,
             completion_probability=completion,
             latency_ms=latency_ms,
-            model=getattr(response, "model", self.model),
+            model=response_model if isinstance(response_model, str) else self.model,
+            provider=self.provider,
         )
 
 
-# Compatibility export for callers that used the pre-Ultrafast package API.
-JevPolicy = UltrafastPolicy
+class UltrafastPolicy(_TypedPolicy):
+    def __init__(self, client: SystemOneClient | None = None, *, model: str | None = None):
+        selected_model = model or os.environ.get("LAYA_MLX_MODEL", "aac6fef/laya-multilingual-mlx")
+        super().__init__(
+            provider="laya",
+            client=client,
+            model=selected_model,
+            create_client=lambda: LayaClient(model=selected_model),
+        )
+
+
+class JevPolicy(_TypedPolicy):
+    def __init__(self, client: SystemOneClient | None = None, *, model: str | None = None):
+        selected_model = model or os.environ.get("TYPESAFE_DEFAULT_MODEL", "jev-latest")
+        super().__init__(
+            provider="jev",
+            client=client,
+            model=selected_model,
+            create_client=lambda: JevClient(model=selected_model),
+        )
+
+
+class DecisionProvidersUnavailableError(RuntimeError):
+    def __init__(
+        self,
+        primary: ProviderName,
+        secondary: ProviderName,
+        primary_error: Exception,
+        secondary_error: Exception,
+    ):
+        super().__init__(
+            f"Decision providers unavailable ({primary}: {primary_error}; {secondary}: {secondary_error})"
+        )
+
+
+def _provider(value: str | None, variable: str, fallback: ProviderName) -> ProviderName:
+    normalized = (value or "").strip().lower()
+    if not normalized:
+        return fallback
+    if normalized in ("laya", "jev"):
+        return normalized  # type: ignore[return-value]
+    raise ValueError(f"{variable} must be laya or jev")
+
+
+def _secondary(value: str | None, fallback: ProviderName) -> ProviderName | None:
+    normalized = (value or "").strip().lower()
+    if not normalized:
+        return fallback
+    if normalized in ("none", "off", "disabled"):
+        return None
+    return _provider(normalized, "ULTRAFAST_SECONDARY_PROVIDER", fallback)
+
+
+def _probability(value: str | None, variable: str, fallback: float) -> float:
+    if value is None or not value.strip():
+        return fallback
+    try:
+        result = float(value)
+    except ValueError as exc:
+        raise ValueError(f"{variable} must be a probability between 0 and 1") from exc
+    if not math.isfinite(result) or not 0 <= result <= 1:
+        raise ValueError(f"{variable} must be a probability between 0 and 1")
+    return result
+
+
+class DualPolicy:
+    """Try the configured primary provider once, then fail back once to the other provider."""
+
+    def __init__(
+        self,
+        *,
+        primary: str | None = None,
+        secondary: str | None = None,
+        fallback_threshold: float | None = None,
+        completion_threshold: float | None = None,
+        laya_client: SystemOneClient | None = None,
+        jev_client: SystemOneClient | None = None,
+        laya_model: str | None = None,
+        jev_model: str | None = None,
+    ):
+        self.primary = _provider(
+            primary or os.environ.get("ULTRAFAST_PRIMARY_PROVIDER"),
+            "ULTRAFAST_PRIMARY_PROVIDER",
+            "laya",
+        )
+        default_secondary: ProviderName = "jev" if self.primary == "laya" else "laya"
+        self.secondary = _secondary(
+            secondary
+            or os.environ.get("ULTRAFAST_SECONDARY_PROVIDER")
+            or os.environ.get("ULTRAFAST_FAILBACK_PROVIDER"),
+            default_secondary,
+        )
+        if self.secondary == self.primary:
+            raise ValueError("ULTRAFAST_SECONDARY_PROVIDER must differ from the primary provider")
+        self.fallback_threshold = (
+            fallback_threshold
+            if fallback_threshold is not None
+            else _probability(os.environ.get("ULTRAFAST_FALLBACK_THRESHOLD"), "ULTRAFAST_FALLBACK_THRESHOLD", 0.55)
+        )
+        self.completion_threshold = (
+            completion_threshold
+            if completion_threshold is not None
+            else _probability(
+                os.environ.get("ULTRAFAST_COMPLETION_THRESHOLD"), "ULTRAFAST_COMPLETION_THRESHOLD", 0.85
+            )
+        )
+        if not 0 <= self.fallback_threshold <= 1 or not 0 <= self.completion_threshold <= 1:
+            raise ValueError("Dual policy thresholds must be probabilities between 0 and 1")
+        self._policies: dict[ProviderName, _TypedPolicy] = {}
+        self._clients = {"laya": laya_client, "jev": jev_client}
+        self._models = {"laya": laya_model, "jev": jev_model}
+
+    def close(self) -> None:
+        for policy in self._policies.values():
+            policy.close()
+        self._policies.clear()
+
+    def decide(self, snapshot: Snapshot, goal: str, history: list[dict[str, object]]) -> Decision:
+        try:
+            primary_decision = self._policy(self.primary).decide(snapshot, goal, history)
+        except Exception as primary_error:
+            if self.secondary is None:
+                raise
+            try:
+                return self._policy(self.secondary).decide(snapshot, goal, history)
+            except Exception as secondary_error:
+                raise DecisionProvidersUnavailableError(
+                    self.primary, self.secondary, primary_error, secondary_error
+                ) from secondary_error
+        if self.secondary is None or not self._should_failback(primary_decision):
+            return primary_decision
+        try:
+            return self._policy(self.secondary).decide(snapshot, goal, history)
+        except Exception:
+            return primary_decision
+
+    def _should_failback(self, decision: Decision) -> bool:
+        return (
+            decision.operation == "BLOCKED"
+            or decision.execution_probability < self.fallback_threshold
+            or (
+                decision.operation == "DONE"
+                and decision.completion_probability < self.completion_threshold
+            )
+        )
+
+    def _policy(self, provider: ProviderName) -> _TypedPolicy:
+        existing = self._policies.get(provider)
+        if existing is not None:
+            return existing
+        client = self._clients[provider]
+        model = self._models[provider]
+        policy: _TypedPolicy = (
+            UltrafastPolicy(client=client, model=model)
+            if provider == "laya"
+            else JevPolicy(client=client, model=model)
+        )
+        self._policies[provider] = policy
+        return policy

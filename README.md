@@ -1,7 +1,8 @@
 # Ultrafast Android Assistant
 
 这是一个可复用的 Android UI 导航助手。它通过 UIAutomator 读取当前页面，把可见、可操作的控件
-转换成有编号的有限动作空间，再让本地 `laya-mlx` 判断下一步操作和对应目标。
+转换成有编号的有限动作空间，再让配置的 Laya/Jev provider 判断下一步操作和对应目标。
+默认先用本地 Laya，必要时一次 failback 到 Jev。
 
 设计采用“当前页面动作空间 + 一次 typed decision + 执行前 freshness 校验”的模式：
 
@@ -30,8 +31,36 @@ uv pip install --python .venv/bin/python -e "$LAYA_MLX_PATH"
 
 `LAYA_MLX_PATH` 是本地 checkout 的导入兜底；`uv pip install` 仍然是推荐的安装方式。`LAYA_MLX_MODEL`
 可以是本地 checkpoint 目录或 model ID；如果省略，默认使用 `aac6fef/laya-multilingual-mlx`，首次加载
-可能从 Hugging Face 下载权重。上述安装和决策过程不调用任何远程决策 API；要做到完全离线，先下载
-权重并使用本地目录。
+可能从 Hugging Face 下载权重。选择 Laya 时决策在本地完成；要做到完全离线，先下载权重并设置
+`ULTRAFAST_SECONDARY_PROVIDER=none`。
+
+## Dual provider
+
+默认顺序是 `laya -> jev`。主 provider 不可用、返回 `BLOCKED`，或执行概率低于 `0.55` 时，
+只尝试一次另一个 provider；如果 failback 也不可用，仍由本地概率门和调用方处理，不会强制执行动作。
+
+```bash
+export ULTRAFAST_PRIMARY_PROVIDER=laya
+export ULTRAFAST_SECONDARY_PROVIDER=jev
+# 切换成 Jev 主用、Laya failback：
+# export ULTRAFAST_PRIMARY_PROVIDER=jev
+# export ULTRAFAST_SECONDARY_PROVIDER=laya
+```
+
+`ULTRAFAST_SECONDARY_PROVIDER=none` 可关闭 failback，也接受兼容名称
+`ULTRAFAST_FAILBACK_PROVIDER`。命令行可用 `--primary-provider laya|jev` 和
+`--secondary-provider laya|jev|none` 临时覆盖 provider。`ULTRAFAST_FALLBACK_THRESHOLD` 和
+`ULTRAFAST_COMPLETION_THRESHOLD` 控制弱操作与弱 DONE 结果何时切换。
+
+Jev 是历史的 TypeSafe 远程 provider，需要 `TYPESAFE_API_KEY`。不要把密钥提交到仓库；运行 Android
+命令前可以从权限为 `0600` 的本机文件加载：
+
+```bash
+source ~/.config/ultrafast/jev.env
+```
+
+不配置 Jev 时，Laya 仍可单独工作；含敏感内容的页面应保持
+`ULTRAFAST_SECONDARY_PROVIDER=none`。
 
 ADB 默认从 `PATH` 查找。本机的 SDK ADB 路径是
 `/Users/sj/Library/Android/sdk/platform-tools/adb`；如果 `adb` 不在 `PATH`，请设置
