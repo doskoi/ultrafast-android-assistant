@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import math
 import os
 import time
@@ -23,6 +24,8 @@ TARGET = """假设本问题指定的操作就是下一步，从候选中选择�
 
 COMPLETE = """当前界面是否已经提供明确、可见的证据，证明用户目标的全部要求均已完成？
 只根据当前界面和最近操作判断；看到入口或链接不等于已经打开目标结果。"""
+
+LAYA_STATE_TEXT_LIMIT = 1600
 
 ProviderName = Literal["laya", "jev"]
 
@@ -82,6 +85,22 @@ def _choice(answer: object, expected: set[str]) -> tuple[str, dict[str, float], 
 
 def _targets(elements: tuple[Element, ...], operation: str) -> dict[str, Element]:
     return {element.index: element for element in elements if operation in element.operations}
+
+
+def _compact_text(value: str, limit: int) -> str:
+    if len(value) <= limit:
+        return value
+    head = max(1, int(limit * 0.7))
+    tail = max(1, limit - head)
+    return f"{value[:head]}\n...[truncated]...\n{value[-tail:]}"
+
+
+def _element_criterion(element: Element) -> str:
+    view = element.model_view()
+    label = str(view.get("label") or "未命名控件")
+    role = str(view.get("role") or "控件")
+    operations = ", ".join(str(operation) for operation in element.operations)
+    return f"{label}（{role}；支持：{operations}）"
 
 
 class JevClient:
@@ -148,19 +167,46 @@ class _TypedPolicy:
         operations.update(
             BACK="返回上一层；只有返回能推进目标时使用。",
             WAIT="短暂等待当前页面更新。",
-            DONE="当前界面已经明确证明完整目标已完成。",
+            DONE="当前界面已经明确证明完整目标已完成；打开、点击或滚动时不要选这个。",
             BLOCKED="只读操作无法从当前界面继续。",
         )
-        state = snapshot.model_state(history)
+        if self.provider == "laya":
+            for operation, elements in target_groups.items():
+                available = "、".join(_element_criterion(element) for element in elements.values())
+                operations[operation] = f"{descriptions[operation]} 可选控件：{available}"
+
+        def model_state(
+            elements: tuple[Element, ...] | None = None,
+            *,
+            include_visible_text: bool = True,
+        ) -> object:
+            if self.provider == "laya":
+                visible_elements = snapshot.elements if elements is None else elements
+                candidates = "\n".join(
+                    f"{element.index}: {_element_criterion(element)}"
+                    for element in visible_elements
+                )
+                lines = [
+                    f"应用：{snapshot.package}",
+                    f"候选控件：\n{candidates or '(无)'}",
+                ]
+                if include_visible_text:
+                    lines.append(f"页面文字：\n{_compact_text(snapshot.text, LAYA_STATE_TEXT_LIMIT)}")
+                if history:
+                    lines.append(f"最近操作：{json.dumps(history[-4:], ensure_ascii=False)}")
+                return "\n".join(lines)
+            return snapshot.model_state(history, elements=elements)
+
+        state = model_state()
         questions: dict[str, object] = {
             "operation": {
                 "type": "choice",
-                "instructions": {"goal": goal, "rules": NEXT_ACTION},
+                "instructions": f"用户目标：{goal}\n\n{NEXT_ACTION}",
                 "criteria": operations,
             },
             "goal_complete": {
                 "type": "noul",
-                "instructions": {"goal": goal, "question": COMPLETE},
+                "instructions": f"用户目标：{goal}\n\n{COMPLETE}",
                 "criteria": {
                     "true": "当前界面已明确证明用户要求的结果。",
                     "false": "目标尚未完成、证据不充分、页面仍在加载或只看到了入口。",
@@ -183,16 +229,17 @@ class _TypedPolicy:
         if operation in target_groups:
             target_key = f"{operation.lower()}_target"
             target_response = client.system_one(
-                state=snapshot.model_state(
-                    history,
-                    elements=tuple(target_groups[operation].values()),
+                state=model_state(
+                    tuple(target_groups[operation].values()),
+                    include_visible_text=False,
                 ),
                 questions={
                     target_key: {
                         "type": "choice",
-                        "instructions": {"goal": goal, "operation": operation, "rules": TARGET},
+                        "instructions": f"用户目标：{goal}\n当前操作：{operation}\n\n{TARGET}",
                         "criteria": {
-                            index: element.model_view() for index, element in target_groups[operation].items()
+                            index: _element_criterion(element)
+                            for index, element in target_groups[operation].items()
                         },
                     }
                 },

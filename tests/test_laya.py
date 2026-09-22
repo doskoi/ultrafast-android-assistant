@@ -18,9 +18,11 @@ class FakeAgent:
                     "choice": "DONE",
                     "probabilities": {"DONE": 1.0},
                     "confidence": 1.0,
+                    "action": {"act_probability": 0.75},
                 },
                 "goal_complete": {"noul": 0.9},
             },
+            "usage": {"input_tokens": 42, "output_tokens": 0},
         }
 
 
@@ -34,3 +36,5 @@ def test_laya_client_uses_local_agent_and_preserves_answer_maps() -> None:
     assert response.model == "laya-test"
     assert response.answers["operation"].choice == "DONE"
     assert response.answers["operation"].probabilities == {"DONE": 1.0}
+    assert response.answers["operation"].action == {"act_probability": 0.75}
+    assert response.usage == {"input_tokens": 42, "output_tokens": 0}

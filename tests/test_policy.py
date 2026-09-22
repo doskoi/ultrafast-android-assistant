@@ -84,8 +84,17 @@ def test_selects_operation_first_then_only_validates_its_target() -> None:
     assert decision.model == "ultrafast-test"
     assert set(client.calls[0]["questions"]) == {"operation", "goal_complete"}
     assert set(client.calls[1]["questions"]) == {"click_target"}
-    assert "'index': '1'" in repr(client.calls[1]["state"])
-    assert "'index': '2'" not in repr(client.calls[1]["state"])
+    operation_question = client.calls[0]["questions"]["operation"]
+    assert isinstance(operation_question["instructions"], str)
+    assert operation_question["instructions"].startswith("用户目标：打开市场情绪")
+    assert all(isinstance(value, str) for value in operation_question["criteria"].values())
+    target_question = client.calls[1]["questions"]["click_target"]
+    assert isinstance(target_question["instructions"], str)
+    assert target_question["instructions"].startswith("用户目标：打开市场情绪\n当前操作：CLICK")
+    assert all(isinstance(value, str) for value in target_question["criteria"].values())
+    assert "1: 市场情绪" in str(client.calls[1]["state"])
+    assert "2: 行情列表" not in str(client.calls[1]["state"])
+    assert "页面文字" not in str(client.calls[1]["state"])
     assert "bounds" not in repr(client.calls[0]["state"])
 
 

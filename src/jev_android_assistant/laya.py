@@ -17,12 +17,14 @@ def _response_namespace(value: dict[str, object]) -> object:
     answers = value.get("answers")
     if not isinstance(answers, dict):
         raise ValueError("Local Laya returned an invalid answers object")
+    usage = value.get("usage")
     return SimpleNamespace(
         model=value.get("model"),
         answers={
             key: SimpleNamespace(**answer) if isinstance(answer, dict) else answer
             for key, answer in answers.items()
         },
+        usage=usage if isinstance(usage, dict) else None,
     )
 
 
