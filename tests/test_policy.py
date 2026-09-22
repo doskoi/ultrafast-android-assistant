@@ -52,7 +52,7 @@ def choice(selected: str, values: dict[str, float], confidence: float = 0.9) -> 
     return SimpleNamespace(choice=selected, probabilities=values, confidence=confidence)
 
 
-def test_one_request_selects_operation_and_only_validates_its_target() -> None:
+def test_selects_operation_first_then_only_validates_its_target() -> None:
     operations = {
         "CLICK": 0.8,
         "SCROLL_DOWN": 0.04,
@@ -77,18 +77,15 @@ def test_one_request_selects_operation_and_only_validates_its_target() -> None:
 
     decision = UltrafastPolicy(client=client).decide(snapshot(), "打开市场情绪", [])
 
-    assert len(client.calls) == 1
+    assert len(client.calls) == 2
     assert decision.operation == "CLICK"
     assert decision.target == "1"
     assert decision.execution_probability == 0.8
     assert decision.model == "ultrafast-test"
-    assert set(client.calls[0]["questions"]) == {
-        "operation",
-        "goal_complete",
-        "click_target",
-        "scroll_down_target",
-        "scroll_up_target",
-    }
+    assert set(client.calls[0]["questions"]) == {"operation", "goal_complete"}
+    assert set(client.calls[1]["questions"]) == {"click_target"}
+    assert "'index': '1'" in repr(client.calls[1]["state"])
+    assert "'index': '2'" not in repr(client.calls[1]["state"])
     assert "bounds" not in repr(client.calls[0]["state"])
 
 

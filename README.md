@@ -4,11 +4,11 @@
 转换成有编号的有限动作空间，再让配置的 Laya/Jev provider 判断下一步操作和对应目标。
 默认先用远程 Jev，必要时一次 failback 到本地 Laya。
 
-设计采用“当前页面动作空间 + 一次 typed decision + 执行前 freshness 校验”的模式：
+设计采用“当前页面动作空间 + 两阶段 typed decision + 执行前 freshness 校验”的模式：
 
 - 每一步都从当前页面重新生成动作空间；
-- 一次 System One 请求同时生成操作、各操作的候选目标和完成判断；
-- 代码只读取被选中操作对应的目标分支；
+- 第一次 System One 请求用 `Choice` 生成操作、用 `Noul` 判断完成状态；
+- 如果操作需要目标，第二次请求只生成该操作的候选目标，避免无关目标分支扩大 token；
 - 执行前重新观察页面，页面变化时拒绝输入。
 
 它没有移植浏览器 DOM、selector 或 browser-harness。Android 侧使用 UIAutomator 作为可访问性树，
@@ -173,6 +173,6 @@ uv run --no-sync pytest -q
 uv build
 ```
 
-单元测试覆盖动作空间过滤、敏感信息脱敏、模型不可见坐标、单请求 speculative target、概率门槛、
+单元测试覆盖动作空间过滤、敏感信息脱敏、模型不可见坐标、两阶段目标选择、概率门槛、
 完成判断和页面 freshness。当前实机验证结果和未验证边界见
 [docs/live-validation.md](docs/live-validation.md)。

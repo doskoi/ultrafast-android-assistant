@@ -85,7 +85,7 @@ def test_primary_is_kept_without_calling_secondary() -> None:
 
     assert decision.provider == "laya"
     assert decision.model == "laya-test"
-    assert primary.calls == 1
+    assert primary.calls == 2
     assert secondary.calls == 0
 
 
@@ -100,7 +100,7 @@ def test_defaults_to_jev_primary_and_laya_failback(monkeypatch: pytest.MonkeyPat
     decision = policy.decide(snapshot(), "打开市场情绪", [])
 
     assert decision.provider == "jev"
-    assert jev.calls == 1
+    assert jev.calls == 2
     assert laya.calls == 0
 
 
@@ -113,8 +113,8 @@ def test_weak_primary_fails_back_to_secondary() -> None:
 
     assert decision.provider == "jev"
     assert decision.model == "jev-test"
-    assert primary.calls == 1
-    assert secondary.calls == 1
+    assert primary.calls == 2
+    assert secondary.calls == 2
 
 
 def test_primary_runtime_failure_fails_back() -> None:
@@ -126,7 +126,7 @@ def test_primary_runtime_failure_fails_back() -> None:
 
     assert decision.provider == "jev"
     assert primary.calls == 1
-    assert secondary.calls == 1
+    assert secondary.calls == 2
 
 
 def test_both_provider_failures_are_reported() -> None:
@@ -149,5 +149,5 @@ def test_jev_can_be_primary_with_laya_failback() -> None:
     decision = policy.decide(snapshot(), "打开市场情绪", [])
 
     assert decision.provider == "jev"
-    assert jev.calls == 1
+    assert jev.calls == 2
     assert laya.calls == 0

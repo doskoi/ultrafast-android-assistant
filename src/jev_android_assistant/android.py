@@ -96,10 +96,16 @@ class Snapshot:
     def element(self, index: str) -> Element:
         return next(element for element in self.elements if element.index == index)
 
-    def model_state(self, history: list[dict[str, object]]) -> dict[str, object]:
+    def model_state(
+        self,
+        history: list[dict[str, object]],
+        *,
+        elements: tuple[Element, ...] | None = None,
+    ) -> dict[str, object]:
+        visible_elements = self.elements if elements is None else elements
         return {
             "screen": {"package": self.package, "activity": self.activity, "text": self.text},
-            "elements": [element.model_view() for element in self.elements],
+            "elements": [element.model_view() for element in visible_elements],
             "recent_actions": history[-10:],
         }
 

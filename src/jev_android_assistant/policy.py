@@ -151,6 +151,7 @@ class _TypedPolicy:
             DONE="当前界面已经明确证明完整目标已完成。",
             BLOCKED="只读操作无法从当前界面继续。",
         )
+        state = snapshot.model_state(history)
         questions: dict[str, object] = {
             "operation": {
                 "type": "choice",
@@ -166,17 +167,9 @@ class _TypedPolicy:
                 },
             },
         }
-        for operation, targets in target_groups.items():
-            questions[f"{operation.lower()}_target"] = {
-                "type": "choice",
-                "instructions": {"goal": goal, "operation": operation, "rules": TARGET},
-                "criteria": {index: element.model_view() for index, element in targets.items()},
-            }
         started = time.perf_counter()
-        response = self._client().system_one(
-            state=snapshot.model_state(history), questions=questions, model=self.model
-        )
-        latency_ms = round((time.perf_counter() - started) * 1000)
+        client = self._client()
+        response = client.system_one(state=state, questions=questions, model=self.model)
         answers = _field(response, "answers", {})
         operation, operation_probabilities, operation_confidence = _choice(
             _field(answers, "operation"), set(operations)
@@ -188,11 +181,30 @@ class _TypedPolicy:
         target_probability = None
         target_confidence = None
         if operation in target_groups:
+            target_key = f"{operation.lower()}_target"
+            target_response = client.system_one(
+                state=snapshot.model_state(
+                    history,
+                    elements=tuple(target_groups[operation].values()),
+                ),
+                questions={
+                    target_key: {
+                        "type": "choice",
+                        "instructions": {"goal": goal, "operation": operation, "rules": TARGET},
+                        "criteria": {
+                            index: element.model_view() for index, element in target_groups[operation].items()
+                        },
+                    }
+                },
+                model=self.model,
+            )
+            target_answers = _field(target_response, "answers", {})
             target, target_probabilities, target_confidence = _choice(
-                _field(answers, f"{operation.lower()}_target"), set(target_groups[operation])
+                _field(target_answers, target_key), set(target_groups[operation])
             )
             target_probability = target_probabilities[target]
-        response_model = _field(response, "model")
+        latency_ms = round((time.perf_counter() - started) * 1000)
+        response_model = _field(target_response, "model") if operation in target_groups else _field(response, "model")
         return Decision(
             operation=operation,
             target=target,
