@@ -15,7 +15,8 @@ configuration, not in the core package.
   source as an import fallback, but it does not install laya-mlx's dependencies. `LAYA_MLX_MODEL` accepts a local
   checkpoint directory or a model ID; an unset model may download `aac6fef/laya-multilingual-mlx`, so strict
   offline checks use a local path.
-- The decision router supports the same dual-provider contract as the Computer Use skill:
+- The decision router supports the same dual-provider contract as the Computer Use skill, defaulting to Jev with
+  local Laya failback:
   `ULTRAFAST_PRIMARY_PROVIDER` selects `laya` or `jev`, and `ULTRAFAST_SECONDARY_PROVIDER` selects the one-time
   failback or `none`. Jev is remote and requires `TYPESAFE_API_KEY`; never commit that credential.
 - ADB may not be on `PATH`. Use `ANDROID_ADB` or pass `--adb`; on this machine the verified binary is
