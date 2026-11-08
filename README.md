@@ -2,7 +2,7 @@
 
 这是一个可复用的 Android UI 导航助手。它通过 UIAutomator 读取当前页面，把可见、可操作的控件
 转换成有编号的有限动作空间，再让配置的 Laya/Jev provider 判断下一步操作和对应目标。
-默认先用远程 Jev，必要时一次 failback 到本地 Laya。
+默认只用远程 Jev；只有显式配置 Laya 时才启用 failback。
 
 设计采用“当前页面动作空间 + 两阶段 typed decision + 执行前 freshness 校验”的模式：
 
@@ -36,12 +36,14 @@ uv pip install --python .venv/bin/python -e "$LAYA_MLX_PATH"
 
 ## Dual provider
 
-默认顺序是 `jev -> laya`。主 provider 不可用、返回 `BLOCKED`，或执行概率低于 `0.55` 时，
-只尝试一次另一个 provider；如果 failback 也不可用，仍由本地概率门和调用方处理，不会强制执行动作。
+默认只启用 `jev`，不配置 failback。需要本地回退时显式设置 `ULTRAFAST_SECONDARY_PROVIDER=laya`；
+主 provider 不可用、返回 `BLOCKED`，或执行概率低于 `0.55` 时，只尝试一次配置的另一个 provider；
+如果 failback 也不可用，仍由本地概率门和调用方处理，不会强制执行动作。
 
 ```bash
 export ULTRAFAST_PRIMARY_PROVIDER=jev
-export ULTRAFAST_SECONDARY_PROVIDER=laya
+# 默认不启用 Laya 回退；需要时改为 laya：
+export ULTRAFAST_SECONDARY_PROVIDER=none
 # 只使用本地 Laya：
 # export ULTRAFAST_PRIMARY_PROVIDER=laya
 # export ULTRAFAST_SECONDARY_PROVIDER=none

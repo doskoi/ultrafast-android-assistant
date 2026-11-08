@@ -310,13 +310,13 @@ def _provider(value: str | None, variable: str, fallback: ProviderName) -> Provi
     raise ValueError(f"{variable} must be laya or jev")
 
 
-def _secondary(value: str | None, fallback: ProviderName) -> ProviderName | None:
+def _secondary(value: str | None, fallback: ProviderName | None) -> ProviderName | None:
     normalized = (value or "").strip().lower()
     if not normalized:
         return fallback
     if normalized in ("none", "off", "disabled"):
         return None
-    return _provider(normalized, "ULTRAFAST_SECONDARY_PROVIDER", fallback)
+    return _provider(normalized, "ULTRAFAST_SECONDARY_PROVIDER", fallback or "jev")
 
 
 def _probability(value: str | None, variable: str, fallback: float) -> float:
@@ -351,7 +351,7 @@ class DualPolicy:
             "ULTRAFAST_PRIMARY_PROVIDER",
             "jev",
         )
-        default_secondary: ProviderName = "jev" if self.primary == "laya" else "laya"
+        default_secondary: ProviderName | None = "jev" if self.primary == "laya" else None
         self.secondary = _secondary(
             secondary
             or os.environ.get("ULTRAFAST_SECONDARY_PROVIDER")
