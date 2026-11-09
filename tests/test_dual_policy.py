@@ -118,6 +118,20 @@ def test_weak_primary_keeps_its_decision_without_secondary(monkeypatch: pytest.M
     assert laya.calls == 0
 
 
+def test_primary_without_explicit_secondary_does_not_fail_back(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("ULTRAFAST_PRIMARY_PROVIDER", raising=False)
+    monkeypatch.delenv("ULTRAFAST_SECONDARY_PROVIDER", raising=False)
+    monkeypatch.delenv("ULTRAFAST_FAILBACK_PROVIDER", raising=False)
+    laya = FakeClient(response(0.2, "laya-test"))
+    jev = FakeClient(response(0.9, "jev-test"))
+    policy = DualPolicy(primary="laya", laya_client=laya, jev_client=jev)
+
+    decision = policy.decide(snapshot(), "打开市场情绪", [])
+
+    assert decision.provider == "laya"
+    assert jev.calls == 0
+
+
 def test_weak_primary_fails_back_to_secondary() -> None:
     primary = FakeClient(response(0.2, "laya-test"))
     secondary = FakeClient(response(0.8, "jev-test"))

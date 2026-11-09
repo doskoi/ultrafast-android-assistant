@@ -351,7 +351,7 @@ class DualPolicy:
             "ULTRAFAST_PRIMARY_PROVIDER",
             "jev",
         )
-        default_secondary: ProviderName | None = "jev" if self.primary == "laya" else None
+        default_secondary: ProviderName | None = None
         self.secondary = _secondary(
             secondary
             or os.environ.get("ULTRAFAST_SECONDARY_PROVIDER")
