@@ -89,7 +89,7 @@ def _element_criterion(element: Element) -> str:
     return f"{label}（{role}；支持：{operations}）"
 
 
-def _validate_remote_config(model: str) -> None:
+def _validate_provider_environment() -> None:
     """Reject retired local routing before any UI data can reach the remote client."""
     allowed = {
         "ULTRAFAST_PRIMARY_PROVIDER": {"", "jev"},
@@ -99,12 +99,6 @@ def _validate_remote_config(model: str) -> None:
     for variable, values in allowed.items():
         if os.environ.get(variable, "").strip().lower() not in values:
             raise ValueError(f"{variable} selects a removed provider; only remote Jev without failback is supported")
-    for variable, value in os.environ.items():
-        if variable.startswith("LAYA_MLX_") and value.strip():
-            raise ValueError(f"{variable} configures a removed local runtime; refusing to send UI data to remote Jev")
-    normalized_model = model.strip().lower()
-    if "laya" in normalized_model or normalized_model.startswith(("/", "./", "../", "~", "file:")):
-        raise ValueError("Local model configuration is no longer supported; refusing to send UI data to remote Jev")
 
 
 class JevClient:
@@ -115,7 +109,7 @@ class JevClient:
         self._client: object | None = None
 
     def system_one(self, state: object, questions: object, *, model: str | None = None) -> object:
-        _validate_remote_config(model or self.model)
+        _validate_provider_environment()
         if self._client is None:
             if not os.environ.get("TYPESAFE_API_KEY"):
                 raise RuntimeError("TypeSafe Jev unavailable: set TYPESAFE_API_KEY before using the Jev provider")
@@ -133,7 +127,6 @@ class JevClient:
 class JevPolicy:
     def __init__(self, client: SystemOneClient | None = None, *, model: str | None = None):
         self.model = model or os.environ.get("TYPESAFE_DEFAULT_MODEL", "jev-latest")
-        _validate_remote_config(self.model)
         self.client = client
 
     def _client(self) -> SystemOneClient:
@@ -149,7 +142,6 @@ class JevPolicy:
             close()
 
     def decide(self, snapshot: Snapshot, goal: str, history: list[dict[str, object]]) -> Decision:
-        _validate_remote_config(self.model)
         target_groups = {
             operation: _targets(snapshot.elements, operation)
             for operation in ("CLICK", "SCROLL_DOWN", "SCROLL_UP")

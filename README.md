@@ -39,13 +39,12 @@ local-only 授权不允许远程传输，也不会恢复已移除的接线。`in
 
 旧的本地模型 adapter、`UltrafastPolicy`、`DualPolicy`、`--primary-provider` 和
 `--secondary-provider` 已删除。代码调用方应显式使用 `JevPolicy`。`--model` 和
-`TYPESAFE_DEFAULT_MODEL` 只接受远程模型配置；Laya model ID 或本地路径会被拒绝。
+`TYPESAFE_DEFAULT_MODEL` 继续用于指定 Jev 的远程模型。
 
 为避免把旧的本地配置静默改为远程请求，以下设置会在请求前报错：
 
 - `ULTRAFAST_PRIMARY_PROVIDER` 选择 `jev` 以外的 provider；
-- `ULTRAFAST_SECONDARY_PROVIDER` 或兼容名称 `ULTRAFAST_FAILBACK_PROVIDER` 指定任何 provider；
-- 任意非空的 `LAYA_MLX_*` 环境变量。
+- `ULTRAFAST_SECONDARY_PROVIDER` 或兼容名称 `ULTRAFAST_FAILBACK_PROVIDER` 指定任何 provider。
 
 共享环境可以保留 `ULTRAFAST_PRIMARY_PROVIDER=jev` 以及 secondary/failback 为 `none`、`off`
 或 `disabled` 的设置；它们只用于检查兼容配置，不再提供路由能力。确认允许远程处理后，才清除

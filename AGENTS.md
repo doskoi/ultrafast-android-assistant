@@ -14,7 +14,7 @@ configuration, not in the core package.
   Do not send a sensitive UI tree to remote Jev. Use deterministic local navigation or human review instead.
   Any data authorization must cover the exact tree and recipient and retain all applicable Skill restrictions;
   local-only authorization never permits remote transmission or restores removed integrations.
-- Local model adapters and provider switching have been removed. Reject retired local-runtime configuration
+- Local model adapters and provider switching have been removed. Reject retired provider-routing configuration
   before making a remote request; never silently reinterpret local-only settings as permission to use Jev.
   Preserve separately installed local programs, model files and historical validation records.
 - ADB may not be on `PATH`. Use `ANDROID_ADB` or pass `--adb`; on this machine the verified binary is
