@@ -1,8 +1,8 @@
 # Ultrafast Android Assistant
 
 这是一个可复用的 Android UI 导航助手。它通过 UIAutomator 读取当前页面，把可见、可操作的控件
-转换成有编号的有限动作空间，再让配置的 Laya/Jev provider 判断下一步操作和对应目标。
-默认只用远程 Jev；只有显式配置 Laya 时才启用 failback。
+转换成有编号的有限动作空间，再让远程 Jev 判断下一步操作和对应目标。
+Jev 是唯一模型 provider；已移除本地模型接线和 failback。
 
 设计采用“当前页面动作空间 + 两阶段 typed decision + 执行前 freshness 校验”的模式：
 
@@ -16,54 +16,42 @@
 
 ## 安装
 
-需要 Python 3.12、`uv`、ADB，以及本机 checkout 的
-[`laya-mlx`](https://github.com/mizorewww/laya-mlx)：
+需要 Python 3.12、`uv` 和 ADB：
 
 ```bash
-export LAYA_MLX_PATH=/Users/sj/projects/laya-mlx
-# 可填本地 checkpoint 目录；也可填 Hugging Face model ID。
-# 严格离线运行时必须填写已经下载好的本地目录。
-export LAYA_MLX_MODEL=/absolute/path/to/laya-checkpoint
-
 uv sync
-uv pip install --python .venv/bin/python -e "$LAYA_MLX_PATH"
 ```
 
-`LAYA_MLX_PATH` 是本地 checkout 的导入兜底；`uv pip install` 仍然是推荐的安装方式。`LAYA_MLX_MODEL`
-可以是本地 checkpoint 目录或 model ID；如果省略，默认使用 `aac6fef/laya-multilingual-mlx`，首次加载
-可能从 Hugging Face 下载权重。选择 Laya 时决策在本地完成；要做到完全离线，先下载权重并设置
-`ULTRAFAST_SECONDARY_PROVIDER=none`。
+已有环境若还单独安装着本地模型程序，更新本项目时使用 `uv pip install --no-deps -e .`，
+避免用会精确同步依赖的命令清除那些独立安装。无需卸载本地程序、删除模型或更改机器配置。
 
-## Dual provider
-
-默认只启用 `jev`，不配置 secondary。`ULTRAFAST_SECONDARY_PROVIDER` 未设置时没有 failback，
-也不会自动选择另一个 provider；需要本地回退时显式设置为 `laya`。主 provider 不可用、返回
-`BLOCKED`，或执行概率低于 `0.55` 时，只尝试一次显式配置的另一个 provider；如果 failback 也不可用，
-仍由本地概率门和调用方处理，不会强制执行动作。
-
-```bash
-export ULTRAFAST_PRIMARY_PROVIDER=jev
-# 不设置 SECONDARY：没有 failback
-# export ULTRAFAST_SECONDARY_PROVIDER=laya
-# 只使用本地 Laya：
-# export ULTRAFAST_PRIMARY_PROVIDER=laya
-# export ULTRAFAST_SECONDARY_PROVIDER=none
-```
-
-`ULTRAFAST_SECONDARY_PROVIDER=none` 可关闭 failback，也接受兼容名称
-`ULTRAFAST_FAILBACK_PROVIDER`。命令行可用 `--primary-provider laya|jev` 和
-`--secondary-provider laya|jev|none` 临时覆盖 provider。`ULTRAFAST_FALLBACK_THRESHOLD` 和
-`ULTRAFAST_COMPLETION_THRESHOLD` 控制弱操作与弱 DONE 结果何时切换。
-
-Jev 是 TypeSafe 远程 provider，需要 `TYPESAFE_API_KEY`；默认主用会把当前 UI 文本发送到该服务。
-不要把密钥提交到仓库；运行 Android 命令前可以从权限为 `0600` 的本机文件加载：
+Jev 通过 `typesafe-sdk` 调用远程服务，需要 `TYPESAFE_API_KEY`。运行 `suggest` 或 `run` 会把
+当前 UI 的语义内容发送到该服务。不要把密钥提交到仓库；运行 Android 命令前可以从权限为 `0600`
+的本机文件加载：
 
 ```bash
 source ~/.config/ultrafast/jev.env
 ```
 
-如果不希望把页面内容发送到远程服务，请显式设置 `ULTRAFAST_PRIMARY_PROVIDER=laya` 和
-`ULTRAFAST_SECONDARY_PROVIDER=none`；含敏感内容的页面应保持这组设置。
+含敏感内容的 UI tree 不得发送到远程 Jev，应使用本地确定性 UIAutomator/ADB 导航或人工确认。
+任何数据授权都必须限定到准确的 UI tree 和接收方，并保留所有适用的 Skill 数据限制；
+local-only 授权不允许远程传输，也不会恢复已移除的接线。`inspect` 不调用模型。
+
+旧的本地模型 adapter、`UltrafastPolicy`、`DualPolicy`、`--primary-provider` 和
+`--secondary-provider` 已删除。代码调用方应显式使用 `JevPolicy`。`--model` 和
+`TYPESAFE_DEFAULT_MODEL` 只接受远程模型配置；Laya model ID 或本地路径会被拒绝。
+
+为避免把旧的本地配置静默改为远程请求，以下设置会在请求前报错：
+
+- `ULTRAFAST_PRIMARY_PROVIDER` 选择 `jev` 以外的 provider；
+- `ULTRAFAST_SECONDARY_PROVIDER` 或兼容名称 `ULTRAFAST_FAILBACK_PROVIDER` 指定任何 provider；
+- 任意非空的 `LAYA_MLX_*` 环境变量。
+
+共享环境可以保留 `ULTRAFAST_PRIMARY_PROVIDER=jev` 以及 secondary/failback 为 `none`、`off`
+或 `disabled` 的设置；它们只用于检查兼容配置，不再提供路由能力。确认允许远程处理后，才清除
+当前进程中的旧配置。单独安装的 Laya 程序和模型可以保留；本项目不会导入、加载或卸载它们。
+`ULTRAFAST_FALLBACK_THRESHOLD` 和 `ULTRAFAST_COMPLETION_THRESHOLD` 不再控制 provider 切换；
+执行概率和完成概率仍由 `--min-probability`、`--completion-threshold` 控制。
 
 ADB 默认从 `PATH` 查找。本机的 SDK ADB 路径是
 `/Users/sj/Library/Android/sdk/platform-tools/adb`；如果 `adb` 不在 `PATH`，请设置
@@ -89,7 +77,7 @@ uv run --no-sync ultrafast-android-assistant \
   inspect
 ```
 
-让本地 Laya 建议一步但不执行：
+让远程 Jev 建议一步但不执行：
 
 ```bash
 uv run --no-sync ultrafast-android-assistant \

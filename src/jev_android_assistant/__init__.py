@@ -2,6 +2,6 @@
 
 from .agent import AndroidAssistant
 from .android import AdbDevice, Snapshot
-from .policy import DualPolicy, JevPolicy, UltrafastPolicy
+from .policy import JevPolicy
 
-__all__ = ["AdbDevice", "AndroidAssistant", "DualPolicy", "JevPolicy", "UltrafastPolicy", "Snapshot"]
+__all__ = ["AdbDevice", "AndroidAssistant", "JevPolicy", "Snapshot"]

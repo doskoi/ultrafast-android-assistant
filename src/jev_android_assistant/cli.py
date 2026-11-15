@@ -8,17 +8,15 @@ import sys
 
 from .agent import AndroidAssistant
 from .android import DEFAULT_ADB, AdbDevice
-from .policy import DualPolicy
+from .policy import JevPolicy
 
 
 def _parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Guarded Laya/Jev Android UI navigation")
+    parser = argparse.ArgumentParser(description="Guarded remote Jev Android UI navigation")
     parser.add_argument("--adb", default=DEFAULT_ADB)
     parser.add_argument("--serial")
     parser.add_argument("--package", required=True, help="Android application package allowed for this run")
     parser.add_argument("--model", default=None)
-    parser.add_argument("--primary-provider", choices=("laya", "jev"), default=None)
-    parser.add_argument("--secondary-provider", choices=("laya", "jev", "none"), default=None)
     parser.add_argument("--min-probability", type=float, default=0.55)
     parser.add_argument("--completion-threshold", type=float, default=0.85)
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -33,21 +31,15 @@ def _parser() -> argparse.ArgumentParser:
 
 def main() -> None:
     args = _parser().parse_args()
-    device = AdbDevice(adb=args.adb, serial=args.serial, package=args.package)
-    assistant = AndroidAssistant(
-        device,
-        DualPolicy(
-            primary=args.primary_provider,
-            secondary=args.secondary_provider,
-            laya_model=args.model,
-            jev_model=args.model,
-            fallback_threshold=args.min_probability,
-            completion_threshold=args.completion_threshold,
-        ),
-        min_probability=args.min_probability,
-        completion_threshold=args.completion_threshold,
-    )
     try:
+        policy = JevPolicy(model=args.model)
+        device = AdbDevice(adb=args.adb, serial=args.serial, package=args.package)
+        assistant = AndroidAssistant(
+            device,
+            policy,
+            min_probability=args.min_probability,
+            completion_threshold=args.completion_threshold,
+        )
         if args.command == "inspect":
             snapshot = assistant.inspect()
             output = {

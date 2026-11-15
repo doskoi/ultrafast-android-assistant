@@ -7,7 +7,7 @@ import pytest
 
 from jev_android_assistant.agent import AndroidAssistant
 from jev_android_assistant.android import Bounds, Element, Snapshot, StaleScreen
-from jev_android_assistant.policy import Decision, UltrafastPolicy
+from jev_android_assistant.policy import Decision, JevPolicy
 
 APP_PACKAGE = "com.example.reader"
 
@@ -75,7 +75,7 @@ def test_selects_operation_first_then_only_validates_its_target() -> None:
         )
     )
 
-    decision = UltrafastPolicy(client=client).decide(snapshot(), "打开市场情绪", [])
+    decision = JevPolicy(client=client).decide(snapshot(), "打开市场情绪", [])
 
     assert len(client.calls) == 2
     assert decision.operation == "CLICK"
@@ -92,9 +92,7 @@ def test_selects_operation_first_then_only_validates_its_target() -> None:
     assert isinstance(target_question["instructions"], str)
     assert target_question["instructions"].startswith("用户目标：打开市场情绪\n当前操作：CLICK")
     assert all(isinstance(value, str) for value in target_question["criteria"].values())
-    assert "1: 市场情绪" in str(client.calls[1]["state"])
-    assert "2: 行情列表" not in str(client.calls[1]["state"])
-    assert "页面文字" not in str(client.calls[1]["state"])
+    assert [element["index"] for element in client.calls[1]["state"]["elements"]] == ["1"]
     assert "bounds" not in repr(client.calls[0]["state"])
 
 
@@ -109,7 +107,7 @@ def test_invalid_probability_shape_blocks_decision() -> None:
     )
 
     with pytest.raises(ValueError, match="Invalid typed-decision choice"):
-        UltrafastPolicy(client=client).decide(snapshot(), "打开市场情绪", [])
+        JevPolicy(client=client).decide(snapshot(), "打开市场情绪", [])
 
 
 @dataclass

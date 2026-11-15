@@ -1,22 +1,17 @@
 # Live validation
 
-## Reproducing a local-model check
+## Current runtime
 
-Install the local runtime into this repository's environment before calling `suggest` or `run`:
+The assistant now supports remote Jev only. Install the declared dependencies with `uv sync` and supply
+`TYPESAFE_API_KEY` separately for `suggest` or `run`. Do not send a sensitive UI tree to remote Jev;
+use deterministic UIAutomator/ADB navigation or human review instead. Any data authorization must cover
+the exact tree and recipient and retain all applicable Skill data restrictions. Local-only authorization
+never permits remote transmission or restores removed integrations. There is no local model loader or failback.
 
-```bash
-export LAYA_MLX_PATH=/Users/sj/projects/laya-mlx
-export LAYA_MLX_MODEL=/absolute/path/to/laya-checkpoint
-uv sync
-uv pip install --python .venv/bin/python -e "$LAYA_MLX_PATH"
-```
+Retired local-provider settings are rejected before a remote request. See the migration notes in
+[README.md](../README.md). Separately installed local programs and model files are preserved.
 
-`LAYA_MLX_MODEL` may also be a model ID, but the first load can download weights. Use a local checkpoint when
-the check must be offline. If ADB is not on `PATH`, pass the verified binary explicitly:
-
-The current router defaults to `jev` only; Laya failback is opt-in. Set `ULTRAFAST_PRIMARY_PROVIDER` and
-`ULTRAFAST_SECONDARY_PROVIDER` to change the order or enable `laya`. Jev requires a separately sourced
-`TYPESAFE_API_KEY`; do not use it for private UI trees.
+If ADB is not on `PATH`, pass the binary explicitly:
 
 ```bash
 uv run --no-sync ultrafast-android-assistant \
@@ -29,6 +24,11 @@ uv run --no-sync ultrafast-android-assistant \
 `inspect` only observes; `suggest` only returns a decision; `run --max-steps N` is the bounded execution path.
 Keep the default probability gate. A low-confidence or incorrect model target should return `needs_review` and
 send no input, as shown by the Battery case below.
+
+## Historical evidence
+
+The dated records below are preserved from earlier runtimes. They are not current installation instructions
+or evidence that the current Jev-only runtime has been tested on a device.
 
 ## 2026-09-20 · Android 15 emulator
 
