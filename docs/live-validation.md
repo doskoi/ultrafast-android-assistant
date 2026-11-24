@@ -6,7 +6,7 @@ The assistant now supports remote Jev only. Install the declared dependencies wi
 `TYPESAFE_API_KEY` separately for `suggest` or `run`. Do not send a sensitive UI tree to remote Jev;
 use deterministic UIAutomator/ADB navigation or human review instead. Any data authorization must cover
 the exact tree and recipient and retain all applicable Skill data restrictions. Local-only authorization
-never permits remote transmission or restores removed integrations. There is no local model loader or failback.
+never permits remote transmission or restores removed integrations. There is no local model loader or fallback.
 
 Retired local-provider settings are rejected before a remote request. See the migration notes in
 [README.md](../README.md). Separately installed local programs and model files are preserved.

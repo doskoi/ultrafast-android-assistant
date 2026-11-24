@@ -2,7 +2,7 @@
 
 这是一个可复用的 Android UI 导航助手。它通过 UIAutomator 读取当前页面，把可见、可操作的控件
 转换成有编号的有限动作空间，再让远程 Jev 判断下一步操作和对应目标。
-Jev 是唯一模型 provider；已移除本地模型接线和 failback。
+Jev 是唯一模型 provider；已移除本地模型接线和 fallback。
 
 设计采用“当前页面动作空间 + 两阶段 typed decision + 执行前 freshness 校验”的模式：
 
@@ -44,9 +44,9 @@ local-only 授权不允许远程传输，也不会恢复已移除的接线。`in
 为避免把旧的本地配置静默改为远程请求，以下设置会在请求前报错：
 
 - `ULTRAFAST_PRIMARY_PROVIDER` 选择 `jev` 以外的 provider；
-- `ULTRAFAST_SECONDARY_PROVIDER` 或兼容名称 `ULTRAFAST_FAILBACK_PROVIDER` 指定任何 provider。
+- `ULTRAFAST_SECONDARY_PROVIDER` 或 `ULTRAFAST_FALLBACK_PROVIDER` 指定任何 provider。
 
-共享环境可以保留 `ULTRAFAST_PRIMARY_PROVIDER=jev` 以及 secondary/failback 为 `none`、`off`
+共享环境可以保留 `ULTRAFAST_PRIMARY_PROVIDER=jev` 以及 secondary/fallback 为 `none`、`off`
 或 `disabled` 的设置；它们只用于检查兼容配置，不再提供路由能力。确认允许远程处理后，才清除
 当前进程中的旧配置。单独安装的 Laya 程序和模型可以保留；本项目不会导入、加载或卸载它们。
 `ULTRAFAST_FALLBACK_THRESHOLD` 和 `ULTRAFAST_COMPLETION_THRESHOLD` 不再控制 provider 切换；

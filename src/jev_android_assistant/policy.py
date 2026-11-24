@@ -94,11 +94,11 @@ def _validate_provider_environment() -> None:
     allowed = {
         "ULTRAFAST_PRIMARY_PROVIDER": {"", "jev"},
         "ULTRAFAST_SECONDARY_PROVIDER": {"", "none", "off", "disabled"},
-        "ULTRAFAST_FAILBACK_PROVIDER": {"", "none", "off", "disabled"},
+        "ULTRAFAST_FALLBACK_PROVIDER": {"", "none", "off", "disabled"},
     }
     for variable, values in allowed.items():
         if os.environ.get(variable, "").strip().lower() not in values:
-            raise ValueError(f"{variable} selects a removed provider; only remote Jev without failback is supported")
+            raise ValueError(f"{variable} selects a removed provider; only remote Jev without fallback is supported")
 
 
 class JevClient:
