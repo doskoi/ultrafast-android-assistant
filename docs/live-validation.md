@@ -50,8 +50,7 @@ Verified on a real emulator:
    re-observed the full page, matched the fingerprint, mapped the selected index to its local bounds, tapped it,
    and reached `com.android.settings/.SubSettings` with visible `Battery` content.
 6. The historical validation below predates local Laya and is not the current runtime path.
-7. A current local Laya validation must load a local checkpoint, record the selected operation/target and
-   probabilities, then verify the same bounded run on the emulator.
+7. Local Laya validation is retired; this document keeps it only as earlier evidence.
 8. On Kaipl's first-run agreement screen, the code exposed no consent action and the historical model selected
    `BLOCKED` with probability `0.87`; no input was sent.
 
