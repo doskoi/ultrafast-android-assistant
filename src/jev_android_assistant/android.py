@@ -121,24 +121,36 @@ class StaleScreen(ValueError):
 class ReadOnlySafetyPolicy:
     """Keep the assistant away from clearly state-changing UI."""
 
+    # Unambiguous write commands. They are matched anywhere in a label, because a
+    # command phrase such as "Sign out" or "Place order" is never plain page copy.
     BLOCKED_TEXT = re.compile(
         r"购买|支付|开通|订阅|立即解锁|关注|取消关注|删除|注销|退出登录|"
-        r"保存|添加|移除|设自选|兑换|领取|下单|交易|修改密码|绑定|"
+        r"保存|添加|移除|设自选|下单|交易|修改密码|"
         r"确定|确认|提交|登录|注册|发送验证码|授权|同意|不同意|暂不使用|拒绝|"
-        r"稍后再说|编辑|立即体验|分享|预约|预订|"
+        r"稍后再说|编辑|立即体验|(?<!已)(?:分享|预约|预订|兑换|领取|绑定|开启|关闭)|"
         r"\b(?:buy|pay|purchase|subscribe|follow|unfollow|delete|logout|save|favorite|"
-        r"trade|order|redeem|claim|confirm|submit|login|register|authorize|decline|deny|"
-        r"not now|edit|send|post|publish|upload|install|update|change password|share|book|"
-        r"reserve|checkout|agree|accept|allow|log out|sign in|sign out|unsubscribe|bind|"
-        r"enable|disable|toggle)\b",
+        r"trade|redeem|claim|confirm|submit|login|register|authorize|decline|deny|"
+        r"not now|edit|send|publish|upload|install|change password|checkout|agree|accept|allow|"
+        r"log out|sign in|sign out|unsubscribe|bind|enable|disable|place order|book now)\b",
         re.IGNORECASE,
     )
+    # Command words that are also ordinary UI nouns, such as the "Share price" or
+    # "Order book" labels of a finance screen. Only a label that is exactly one of
+    # these words is treated as a command.
+    BLOCKED_EXACT_LABEL = re.compile(
+        r"(?:share|book|reserve|update|post|toggle|order)", re.IGNORECASE
+    )
+    # Resource-id names are matched at the start of the name, optionally after one
+    # control prefix such as ``btn_``. Matching arbitrary ``_``-separated segments
+    # would also block read-only fields such as ``tv_market_share``.
     BLOCKED_RESOURCE_ID = re.compile(
-        r"(?:^|[_/])(?:buy|pay|purchase|subscribe|follow|unfollow|delete|logout|save|"
+        r"(?:^|[:/])(?:(?:btn|button|ib|iv|icon|img|fab|action|menu|item)[_-])?"
+        r"(?:buy|pay|purchase|subscribe|follow|unfollow|delete|logout|save|"
         r"add[_-]?watchlist|remove[_-]?watchlist|add[_-]?favorite|remove[_-]?favorite|"
-        r"trade|place[_-]?order|redeem|claim|change[_-]?password|confirm|submit|login|"
-        r"register|authorize|enable|toggle|switch|edit|share|send|publish|upload|unsubscribe|"
-        r"sign[_-]?in|log[_-]?out|checkout|agree|accept)(?:$|[_-])",
+        r"trade|place[_-]?order|redeem|claim|change[_-]?password|confirm|submit|login|log[_-]?in|"
+        r"register|authorize|enable|disable|toggle|switch|edit|share|send|publish|upload|"
+        r"unsubscribe|sign[_-]?in|sign[_-]?out|log[_-]?out|checkout|agree|accept|"
+        r"book|reserve|update|post)(?:$|[_-])",
         re.IGNORECASE,
     )
 
@@ -151,6 +163,7 @@ class ReadOnlySafetyPolicy:
         return (
             element.package == self.package
             and not self.BLOCKED_TEXT.search(element.label)
+            and not self.BLOCKED_EXACT_LABEL.fullmatch(element.label.strip())
             and not self.BLOCKED_RESOURCE_ID.search(element.resource_id)
         )
 

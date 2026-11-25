@@ -29,19 +29,17 @@ def element(label: str, resource_id: str = "") -> Element:
         "Log out",
         "Enable notifications",
         "Disable notifications",
-        "Toggle favorite",
         "Redeem code",
         "Claim reward",
         "Bind account",
         "Change password",
-        "Share report",
         "Send message",
         "Publish",
         "Upload",
         "Install",
-        "Update",
+        "Place order",
         "Book now",
-        "Reserve",
+        "Toggle favorite",
         "Checkout",
         "Agree",
         "Accept",
@@ -53,7 +51,24 @@ def test_blocks_english_write_labels(label: str) -> None:
     assert ReadOnlySafetyPolicy(PACKAGE).allows(element(label)) is False
 
 
-@pytest.mark.parametrize("label", ["分享", "预约", "预订", "绑定", "兑换", "领取"])
+@pytest.mark.parametrize("label", ["Share", "Update", "Book", "Reserve", "Post", "Toggle", "Order"])
+def test_blocks_english_write_labels_that_are_also_nouns(label: str) -> None:
+    assert ReadOnlySafetyPolicy(PACKAGE).allows(element(label)) is False
+
+
+@pytest.mark.parametrize(
+    "label",
+    [
+        "分享",
+        "预约",
+        "预订",
+        "绑定",
+        "兑换",
+        "领取",
+        "开启通知",
+        "关闭账户",
+    ],
+)
 def test_blocks_chinese_write_labels(label: str) -> None:
     assert ReadOnlySafetyPolicy(PACKAGE).allows(element(label)) is False
 
@@ -66,22 +81,48 @@ def test_blocks_chinese_write_labels(label: str) -> None:
         "com.example.reader:id/sign_in",
         "com.example.reader:id/log_out",
         "com.example.reader:id/unsubscribe_action",
+        "com.example.reader:id/sign_out_button",
+        "com.example.reader:id/btn_signout",
+        "com.example.reader:id/log_in_button",
+        "com.example.reader:id/disable_sync",
     ],
 )
 def test_blocks_english_write_resource_ids(resource_id: str) -> None:
     assert ReadOnlySafetyPolicy(PACKAGE).allows(element("", resource_id)) is False
 
 
-@pytest.mark.parametrize("label", ["市场情绪", "打开", "Back", "Learn more", "Search"])
+@pytest.mark.parametrize(
+    "label",
+    [
+        "市场情绪",
+        "打开",
+        "Back",
+        "Learn more",
+        "Search",
+        "Share price",
+        "Market update",
+        "Order book",
+        "Toggle navigation",
+        "已预约",
+        "已分享",
+        "已绑定",
+        "已关闭",
+    ],
+)
 def test_keeps_read_only_navigation(label: str) -> None:
     assert ReadOnlySafetyPolicy(PACKAGE).allows(element(label)) is True
 
 
-def test_keeps_read_only_resource_ids() -> None:
-    assert (
-        ReadOnlySafetyPolicy(PACKAGE).allows(element("", "com.example.reader:id/market_mood"))
-        is True
-    )
+@pytest.mark.parametrize(
+    "resource_id",
+    [
+        "com.example.reader:id/market_mood",
+        "com.example.reader:id/tv_market_share",
+        "com.example.reader:id/price_chart",
+    ],
+)
+def test_keeps_read_only_resource_ids(resource_id: str) -> None:
+    assert ReadOnlySafetyPolicy(PACKAGE).allows(element("", resource_id)) is True
 
 
 def test_rejects_a_foreign_package() -> None:
