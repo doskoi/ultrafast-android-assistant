@@ -125,17 +125,20 @@ class ReadOnlySafetyPolicy:
         r"购买|支付|开通|订阅|立即解锁|关注|取消关注|删除|注销|退出登录|"
         r"保存|添加|移除|设自选|兑换|领取|下单|交易|修改密码|绑定|"
         r"确定|确认|提交|登录|注册|发送验证码|授权|同意|不同意|暂不使用|拒绝|"
-        r"稍后再说|编辑|立即体验|"
+        r"稍后再说|编辑|立即体验|分享|预约|预订|"
         r"\b(?:buy|pay|purchase|subscribe|follow|unfollow|delete|logout|save|favorite|"
         r"trade|order|redeem|claim|confirm|submit|login|register|authorize|decline|deny|"
-        r"not now|edit)\b",
+        r"not now|edit|send|post|publish|upload|install|update|change password|share|book|"
+        r"reserve|checkout|agree|accept|allow|log out|sign in|sign out|unsubscribe|bind|"
+        r"enable|disable|toggle)\b",
         re.IGNORECASE,
     )
     BLOCKED_RESOURCE_ID = re.compile(
         r"(?:^|[_/])(?:buy|pay|purchase|subscribe|follow|unfollow|delete|logout|save|"
         r"add[_-]?watchlist|remove[_-]?watchlist|add[_-]?favorite|remove[_-]?favorite|"
         r"trade|place[_-]?order|redeem|claim|change[_-]?password|confirm|submit|login|"
-        r"register|authorize|enable|toggle|switch|edit)(?:$|[_-])",
+        r"register|authorize|enable|toggle|switch|edit|share|send|publish|upload|unsubscribe|"
+        r"sign[_-]?in|log[_-]?out|checkout|agree|accept)(?:$|[_-])",
         re.IGNORECASE,
     )
 
