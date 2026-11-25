@@ -140,17 +140,21 @@ class ReadOnlySafetyPolicy:
     BLOCKED_EXACT_LABEL = re.compile(
         r"(?:share|book|reserve|update|post|toggle|order)", re.IGNORECASE
     )
-    # Resource-id names are matched at the start of the name, optionally after one
-    # control prefix such as ``btn_``. Matching arbitrary ``_``-separated segments
-    # would also block read-only fields such as ``tv_market_share``.
+    # Resource ids carry the write intent even when the node has no text. Unambiguous
+    # commands match any ``_``-separated segment, because ids such as ``row_delete``
+    # name the action in a later segment. The words that are also ordinary UI nouns
+    # match only when the id name is that word or a control-suffixed form, so
+    # ``share_button`` and ``order`` block while ``post_item``, ``share_count`` and
+    # ``update_time`` stay navigable.
     BLOCKED_RESOURCE_ID = re.compile(
-        r"(?:^|[:/])(?:(?:btn|button|ib|iv|icon|img|fab|action|menu|item)[_-])?"
-        r"(?:buy|pay|purchase|subscribe|follow|unfollow|delete|logout|save|"
+        r"(?:^|[_/])(?:buy|pay|purchase|subscribe|follow|unfollow|delete|logout|save|"
         r"add[_-]?watchlist|remove[_-]?watchlist|add[_-]?favorite|remove[_-]?favorite|"
         r"trade|place[_-]?order|redeem|claim|change[_-]?password|confirm|submit|login|log[_-]?in|"
-        r"register|authorize|enable|disable|toggle|switch|edit|share|send|publish|upload|"
-        r"unsubscribe|sign[_-]?in|sign[_-]?out|log[_-]?out|checkout|agree|accept|"
-        r"book|reserve|update|post)(?:$|[_-])",
+        r"register|authorize|enable|disable|toggle|switch|edit|send|publish|upload|"
+        r"unsubscribe|sign[_-]?in|sign[_-]?out|log[_-]?out|checkout|agree|accept)(?:$|[_-])"
+        r"|(?:^|[:/])(?:(?:btn|button|ib|iv|icon|img|fab|action|menu)[_-])?"
+        r"(?:share|book|reserve|update|post|order)"
+        r"(?:$|[_\-](?:btn|button|ib|iv|icon|img|fab|action|menu))",
         re.IGNORECASE,
     )
 

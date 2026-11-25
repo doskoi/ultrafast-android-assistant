@@ -85,6 +85,10 @@ def test_blocks_chinese_write_labels(label: str) -> None:
         "com.example.reader:id/btn_signout",
         "com.example.reader:id/log_in_button",
         "com.example.reader:id/disable_sync",
+        "com.example.reader:id/row_delete",
+        "com.example.reader:id/note_delete",
+        "com.example.reader:id/row_edit",
+        "com.example.reader:id/order_button",
     ],
 )
 def test_blocks_english_write_resource_ids(resource_id: str) -> None:
@@ -119,10 +123,24 @@ def test_keeps_read_only_navigation(label: str) -> None:
         "com.example.reader:id/market_mood",
         "com.example.reader:id/tv_market_share",
         "com.example.reader:id/price_chart",
+        "com.example.reader:id/post_item",
+        "com.example.reader:id/book_item",
+        "com.example.reader:id/share_count",
+        "com.example.reader:id/update_time",
     ],
 )
 def test_keeps_read_only_resource_ids(resource_id: str) -> None:
     assert ReadOnlySafetyPolicy(PACKAGE).allows(element("", resource_id)) is True
+
+
+def test_blocks_an_id_that_leads_with_a_write_verb() -> None:
+    # A leading token is the one case the id rule cannot disambiguate. ``send_time`` is
+    # therefore blocked although it usually names a timestamp; only clickable nodes reach
+    # the policy, and a clickable ``send_*`` node is more likely a send control.
+    assert (
+        ReadOnlySafetyPolicy(PACKAGE).allows(element("", "com.example.reader:id/send_time"))
+        is False
+    )
 
 
 def test_rejects_a_foreign_package() -> None:
