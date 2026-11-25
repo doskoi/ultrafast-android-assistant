@@ -1,73 +1,83 @@
 # Ultrafast Android Assistant
 
-这是一个可复用的 Android UI 导航助手。它通过 UIAutomator 读取当前页面，把可见、可操作的控件
-转换成有编号的有限动作空间，再让远程 Jev 判断下一步操作和对应目标。
-Jev 是唯一模型 provider；已移除本地模型接线和 fallback。
+A reusable Android UI navigation assistant. It reads the current screen through UIAutomator, turns the
+visible, actionable controls into a numbered bounded action space, and asks the remote Jev provider to
+choose the next operation and its target. Jev is the only model provider; local model wiring and fallback
+have been removed.
 
-设计采用“当前页面动作空间 + 两阶段 typed decision + 执行前 freshness 校验”的模式：
+The design is "current-screen action space + two-stage typed decision + pre-execution freshness check":
 
-- 每一步都从当前页面重新生成动作空间；
-- 第一次 System One 请求用 `Choice` 生成操作、用 `Noul` 判断完成状态；
-- 如果操作需要目标，第二次请求只生成该操作的候选目标，避免无关目标分支扩大 token；
-- 执行前重新观察页面，页面变化时拒绝输入。
+- every step rebuilds the action space from the current screen;
+- the first System One request uses `Choice` for the operation and `Noul` for completion;
+- when the operation needs a target, the second request generates only that operation's candidates, so
+  unrelated target branches do not inflate the token count;
+- the screen is observed again before execution, and a changed screen rejects the input.
 
-它没有移植浏览器 DOM、selector 或 browser-harness。Android 侧使用 UIAutomator 作为可访问性树，
-使用 ADB 执行经过代码校验的点击、滚动、返回和等待。
+It does not port a browser DOM, selectors, or a browser harness. On Android, UIAutomator supplies the
+accessibility tree and ADB executes code-validated clicks, scrolls, back actions, and waits.
 
-## 安装
+## Installation
 
-需要 Python 3.12、`uv` 和 ADB：
+Requires Python 3.12, `uv`, and ADB:
 
 ```bash
 uv sync
 ```
 
-已有环境若还单独安装着本地模型程序，更新本项目时使用 `uv pip install --no-deps -e .`，
-避免用会精确同步依赖的命令清除那些独立安装。无需卸载本地程序、删除模型或更改机器配置。
+If an existing environment still has a separately installed local model program, update this project with
+`uv pip install --no-deps -e .` so that a command which synchronizes dependencies exactly does not remove
+those separate installations. There is no need to uninstall local programs, delete models, or change
+machine configuration.
 
-Jev 通过 `typesafe-sdk` 调用远程服务，需要 `TYPESAFE_API_KEY`。运行 `suggest` 或 `run` 会把
-当前 UI 的语义内容发送到该服务。不要把密钥提交到仓库；运行 Android 命令前可以从权限为 `0600`
-的本机文件加载：
+Jev calls the remote service through `typesafe-sdk` and needs `TYPESAFE_API_KEY`. Running `suggest` or
+`run` sends the semantic content of the current UI to that service. Do not commit the key to the
+repository; before running Android commands, load it from a machine-local file with mode `0600`:
 
 ```bash
 source ~/.config/ultrafast/jev.env
 ```
 
-含敏感内容的 UI tree 不得发送到远程 Jev，应使用本地确定性 UIAutomator/ADB 导航或人工确认。
-任何数据授权都必须限定到准确的 UI tree 和接收方，并保留所有适用的 Skill 数据限制；
-local-only 授权不允许远程传输，也不会恢复已移除的接线。`inspect` 不调用模型。
+UI trees containing sensitive content must not be sent to remote Jev; use local deterministic
+UIAutomator/ADB navigation or human confirmation instead. Any data authorization must be limited to the
+exact UI tree and recipient and must retain all applicable Skill data restrictions; a local-only
+authorization does not permit remote transmission and does not restore removed wiring. `inspect` does not
+call the model.
 
-旧的本地模型 adapter、`UltrafastPolicy`、`DualPolicy`、`--primary-provider` 和
-`--secondary-provider` 已删除。代码调用方应显式使用 `JevPolicy`。`--model` 和
-`TYPESAFE_DEFAULT_MODEL` 继续用于指定 Jev 的远程模型。
+The old local-model adapter, `UltrafastPolicy`, `DualPolicy`, `--primary-provider`, and
+`--secondary-provider` have been removed. Code should use `JevPolicy` explicitly. `--model` and
+`TYPESAFE_DEFAULT_MODEL` still select the remote Jev model.
 
-为避免把旧的本地配置静默改为远程请求，以下设置会在请求前报错：
+To avoid silently turning an old local configuration into a remote request, these settings fail before the
+request:
 
-- `ULTRAFAST_PRIMARY_PROVIDER` 选择 `jev` 以外的 provider；
-- `ULTRAFAST_SECONDARY_PROVIDER` 或 `ULTRAFAST_FALLBACK_PROVIDER` 指定任何 provider。
+- `ULTRAFAST_PRIMARY_PROVIDER` selects a provider other than `jev`;
+- `ULTRAFAST_SECONDARY_PROVIDER` or `ULTRAFAST_FALLBACK_PROVIDER` selects any provider.
 
-共享环境可以保留 `ULTRAFAST_PRIMARY_PROVIDER=jev` 以及 secondary/fallback 为 `none`、`off`
-或 `disabled` 的设置；它们只用于检查兼容配置，不再提供路由能力。确认允许远程处理后，才清除
-当前进程中的旧配置。单独安装的 Laya 程序和模型可以保留；本项目不会导入、加载或卸载它们。
-`ULTRAFAST_FALLBACK_THRESHOLD` 和 `ULTRAFAST_COMPLETION_THRESHOLD` 不再控制 provider 切换；
-执行概率和完成概率仍由 `--min-probability`、`--completion-threshold` 控制。
+A shared environment may keep `ULTRAFAST_PRIMARY_PROVIDER=jev` and a secondary/fallback value of `none`,
+`off`, or `disabled`; those values only satisfy the compatibility check and no longer provide routing. Clear
+the old settings from the current process only after confirming that remote handling is allowed. A
+separately installed Laya program and model may stay; this project does not import, load, or uninstall
+them. `ULTRAFAST_FALLBACK_THRESHOLD` and `ULTRAFAST_COMPLETION_THRESHOLD` no longer control provider
+switching; execution and completion probability remain controlled by `--min-probability` and
+`--completion-threshold`.
 
-ADB 默认从 `PATH` 查找。本机的 SDK ADB 路径是
-`/Users/sj/Library/Android/sdk/platform-tools/adb`；如果 `adb` 不在 `PATH`，请设置
-`ANDROID_ADB` 或在每条命令中传 `--adb /Users/sj/Library/Android/sdk/platform-tools/adb`。
+ADB is looked up on `PATH` by default. On this machine the SDK ADB is at
+`/Users/sj/Library/Android/sdk/platform-tools/adb`; if `adb` is not on `PATH`, set `ANDROID_ADB` or pass
+`--adb /Users/sj/Library/Android/sdk/platform-tools/adb` on each command.
 
-使用同一环境运行：
+Run it in the same environment:
 
 ```bash
 uv run --no-sync ultrafast-android-assistant --serial emulator-5554 --package com.example.reader \
-  suggest "打开今日榜单，看到榜单标题后停止"
+  suggest "Open today's ranking and stop when the ranking title is visible"
 ```
 
-每次运行必须显式提供允许操作的 Android package；助手发现前台应用不是这个 package 时会立即停止。
+Every run must name the Android package it is allowed to operate; the assistant stops immediately when the
+foreground app is not that package.
 
-## 使用
+## Usage
 
-先读取当前动作空间，不调用模型：
+Read the current action space without calling the model:
 
 ```bash
 uv run --no-sync ultrafast-android-assistant \
@@ -76,86 +86,97 @@ uv run --no-sync ultrafast-android-assistant \
   inspect
 ```
 
-让远程 Jev 建议一步但不执行：
+Ask remote Jev for one suggested step without executing it:
 
 ```bash
 uv run --no-sync ultrafast-android-assistant \
   --serial emulator-5554 \
   --package com.example.reader \
-  suggest '从当前页面打开今日榜单，看到榜单标题后停止'
+  suggest "From the current page, open today's ranking and stop when the ranking title is visible"
 ```
 
-执行有步数上限的导航：
+Run navigation with a step limit:
 
 ```bash
 uv run --no-sync ultrafast-android-assistant \
   --serial emulator-5554 \
   --package com.example.reader \
-  run '从当前页面打开今日榜单，看到榜单标题后停止' \
+  run "From the current page, open today's ranking and stop when the ranking title is visible" \
   --max-steps 12
 ```
 
-Kaipl 可以直接作为一个调用方，不需要把助手代码放进 Kaipl 仓库。下面是 6.0.10 的实测 package；
-其它版本应先用 ADB 确认 package：
+Kaipl can call the assistant directly; the assistant code does not need to live in the Kaipl repository.
+The package below was measured on 6.0.10; confirm the package with ADB for other versions:
 
 ```bash
 uv run --no-sync ultrafast-android-assistant \
   --serial emulator-5554 \
   --package com.yzj.kaipanh \
-  suggest '从当前首页进入市场情绪页面，看到页面标题后停止'
+  suggest "From the current home page, open the market-mood page and stop when its title is visible"
 ```
 
-## 推荐的操作策略：确定性优先，Ultrafast 兜底
+## Recommended operating strategy: deterministic first, Ultrafast as the fallback
 
-Ultrafast 是导航判断器，不是所有 Android 操作的必经步骤。为了提高批量调查和版本对比的效率，按下面的
-优先级选择路径：
+Ultrafast is a navigation judge, not a mandatory step for every Android action. To make batch
+investigations and version comparisons efficient, choose the path in this order:
 
-1. **静态 APK 对比不启动模拟器，也不调用 Ultrafast。** 直接比较 JADX/DEX、资源、Manifest、字符串、
-   网络入口和已经记录的 API 证据。
-2. **已知页面和稳定控件不调用 Ultrafast。** 由本地代码读取 UIAutomator 树，用稳定的
-   `resource-id`、文本、content description 或控件角色匹配目标，然后通过经过校验的 ADB 执行点击、
-   滚动、返回和等待。每次输入前仍须重新观察页面并检查 fingerprint，不能复用过期坐标或旧节点。
-3. **只有页面结构变化、入口不确定或多个控件语义相近时调用 Ultrafast。** Ultrafast 只返回当前观察结果中的
-   操作和目标编号；本地代码从同一份刚观察的 UI 树取得 bounds，再交给 ADB 执行。模型不得生成坐标、
-   selector、shell 命令或输入内容。
-4. **操作完成后优先做本地验证。** 先用 UIAutomator、页面 fingerprint、前台 Activity、日志或网络
-   观察确认状态变化；不要为了验证每一步再次调用模型。
+1. **Static APK comparison does not start an emulator and does not call Ultrafast.** Compare JADX/DEX,
+   resources, the manifest, strings, network entry points, and already recorded API evidence directly.
+2. **Known screens and stable controls do not call Ultrafast.** Local code reads the UIAutomator tree,
+   matches the target by stable `resource-id`, text, content description, or control role, and then
+   performs validated ADB clicks, scrolls, back actions, and waits. Every input must still re-observe the
+   screen and check the fingerprint; never reuse stale coordinates or old nodes.
+3. **Call Ultrafast only when the screen structure changed, the entry point is uncertain, or several
+   controls are semantically similar.** Ultrafast returns only the operation and target index from the
+   current observation; local code takes the bounds from the same freshly observed UI tree and hands the
+   action to ADB. The model must not generate coordinates, selectors, shell commands, or input text.
+4. **Verify locally after each action.** Confirm the state change first with UIAutomator, the screen
+   fingerprint, the foreground activity, logs, or network observation; do not call the model again just to
+   verify each step.
 
-典型的高效链路是：
+The typical efficient chain is:
 
 ```text
-静态 APK 扫描
-  -> 本地规则匹配已知控件
-  -> ADB 执行并等待页面变化
-  -> 本地验证
-  -> 只有匹配失败或语义不确定时，调用一次 Ultrafast
+static APK scan
+  -> local rules match a known control
+  -> ADB executes and waits for the screen to change
+  -> local verification
+  -> call Ultrafast once only when matching fails or semantics are uncertain
 ```
 
-对新页面，`inspect` 用于读取动作空间；`suggest` 适合在第一次确认路径时只取一步建议。确认轨迹
-是只读导航后，直接使用有步数上限的 `run`，不要对同一步骤先执行一次 `suggest`，再让 `run` 重复
-判断，否则会产生重复模型请求。代码调用方也可以直接使用 `AndroidAssistant.step(..., execute=True)`，
-由一次 Ultrafast 判断接一次本地 ADB 执行。
+For a new screen, `inspect` reads the action space; `suggest` is useful for a single step while confirming
+the path. Once the trace is confirmed to be read-only navigation, use `run` with a step limit directly;
+do not call `suggest` for a step and then let `run` judge it again, because that duplicates model requests.
+Code callers may also use `AndroidAssistant.step(..., execute=True)` so that one Ultrafast judgement is
+followed by one local ADB execution.
 
-因此，功能 Gap 扫描应先按“静态证据 -> 已知流程的确定性回归 -> 仅对未知分支使用 Ultrafast”的顺序进行。
-Ultrafast 的点击日志只能证明导航到了某个页面，不能单独证明 API 请求、字段含义、分页或 Gateway 合同。
+A functional gap scan should therefore follow "static evidence -> deterministic regression of known flows
+-> Ultrafast only for unknown branches". Ultrafast's click log only proves that navigation reached some
+screen; it cannot by itself prove API requests, field semantics, pagination, or Gateway contracts.
 
-## 执行边界
+## Execution boundaries
 
-模型只收到页面语义、编号、角色和支持的操作，不会收到坐标、截图、原始 XML 或 ADB 命令。
-坐标只在本地执行器中从刚观察到的节点计算。
+The model receives only page semantics, indices, roles, and supported operations; it never receives
+coordinates, screenshots, raw XML, or ADB commands. Coordinates are computed only in the local executor
+from the node observed immediately before the action.
 
-第一版只支持 `CLICK`、`SCROLL_UP`、`SCROLL_DOWN`、`BACK`、`WAIT`、`DONE` 和 `BLOCKED`。
-它不会输入文本；密码节点、隐藏节点、所有开关/复选框以及购买、支付、订阅、关注、删除、登录、
-保存、编辑等明确写操作不会进入动作空间。
+The first version supports only `CLICK`, `SCROLL_UP`, `SCROLL_DOWN`, `BACK`, `WAIT`, `DONE`, and `BLOCKED`.
+It does not type text; password nodes, hidden nodes, all switches and checkboxes, and obvious write
+operations such as purchase, payment, subscribe, follow, delete, sign-in, save, and edit never enter the
+action space.
 
-自动执行默认要求操作和目标的最低概率都达到 `0.55`。`DONE` 同时要求操作概率达到该阈值，
-并且完成判断达到 `0.85`。这些值是保守初值，应使用目标应用的真实导航轨迹评估后再调整。
+Automatic execution requires both the operation and the target to reach a minimum probability of `0.55` by
+default. `DONE` additionally requires the operation probability to reach that threshold and the completion
+judgement to reach `0.85`. These are conservative initial values and should be tuned against real
+navigation traces of the target app.
 
-真实使用时不要为了让某个目标“成功”而降低阈值或强制执行低置信度动作。模型选错目标或概率不足时，
-预期结果是 `needs_review`，不发送输入；应改进目标描述、使用确定性 UIAutomator 匹配，或回退到本地
-人工确认。`inspect` 不调用模型，`suggest` 只建议不执行，只有有步数上限的 `run` 才会执行动作。
+In real use, do not lower the thresholds or force a low-confidence action just to make a goal "succeed".
+When the model picks the wrong target or the probability is too low, the expected result is `needs_review`
+with no input sent; improve the goal text, use deterministic UIAutomator matching, or fall back to human
+confirmation. `inspect` does not call the model, `suggest` only suggests, and only `run` with a step limit
+executes actions.
 
-## 验证
+## Verification
 
 ```bash
 uv run --no-sync ruff check .
@@ -163,6 +184,6 @@ uv run --no-sync pytest -q
 uv build
 ```
 
-单元测试覆盖动作空间过滤、敏感信息脱敏、模型不可见坐标、两阶段目标选择、概率门槛、
-完成判断和页面 freshness。当前实机验证结果和未验证边界见
-[docs/live-validation.md](docs/live-validation.md)。
+Unit tests cover action-space filtering, sensitive-data redaction, model-invisible coordinates, two-stage
+target selection, probability gates, completion judgement, and screen freshness. Current device validation
+results and unverified boundaries are in [docs/live-validation.md](docs/live-validation.md).
