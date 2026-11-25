@@ -43,7 +43,7 @@ Verified on a real emulator:
 
 1. Installed Kaipl 6.0.10 and launched its resolved activity under package `com.yzj.kaipanh`.
 2. `inspect` read the real UIAutomator tree and identified the first-run agreement screen.
-3. Both agreement choices, `同意` and `暂不使用`, were excluded from the action space after the live test exposed
+3. Both agreement choices, `同意` (agree) and `暂不使用` (not now), were excluded from the action space after the live test exposed
    that declining consent is also a persisted choice.
 4. Opened Android Settings and observed its indexed action space.
 5. A deterministic test policy selected the observed `Battery` element. The normal assistant execution path
